@@ -1,0 +1,3 @@
+# Turntable Replaces the Required 3D World
+
+The full-screen turntable is now the complete SOUNDSCAPE listening experience, replacing the previous requirement that every soundscape include a generated 3D Gaussian world. This deliberately trades per-sound visual-world immersion and the existing SPZ pipeline for a clearer physical playback metaphor, faster readiness, and direct tonearm interaction; the current Metal, SPZ, caching, and world-generation implementation is legacy relative to this accepted product direction and must be removed or retired during implementation rather than treated as a continuing product dependency.

@@ -1,0 +1,74 @@
+project: panor-soundscape-ios
+entries:
+  - id: contract-drift
+    symptom: Swift decoding or request construction diverges from the Soundscape FastAPI contract.
+    observable_signal: scripts/verify-api-contract.sh fails or contract tests turn red.
+    prevention: Keep route/form keys in Shared/Contracts and update the snapshot only with backend review.
+  - id: registration-email-contract-drift
+    symptom: Registration always fails because the iOS client omits the unified auth service's required email field.
+    observable_signal: APIClientContractTests or the live auth validation in scripts/verify-api-contract.sh fails.
+    prevention: Keep login and registration as separate typed credential contracts; registration requires email at compile time.
+  - id: unsigned-simulator-keychain-auth-failure
+    symptom: Registration creates the server account but the app stays signed out and incorrectly shows a network error.
+    observable_signal: KeychainTokenStoreTests fails with secureStorageUnavailable(-34018), or repo guards find CODE_SIGNING_ALLOWED=NO on simulator build/test commands.
+    prevention: Keep simulator signing enabled, exercise a real Keychain round trip in XCTest, and surface secure-storage failures separately from transport failures.
+  - id: ui-test-production-keychain-pollution
+    symptom: XCUITests fail or skip the registration surface because a previous live run left the production app signed in.
+    observable_signal: Navigation or registration XCUITests cannot find the signed-out library heading and login button.
+    prevention: Launch every XCUITest with a unique Keychain service, and keep that isolation contract enforced by repository guards.
+  - id: silent-failure
+    symptom: Empty UI appears after auth, AI, upload, recording, or network failure.
+    observable_signal: A view model enters loaded-empty without a successful repository response.
+    prevention: Explicit LoadState and CreationPhase enums; repo guard rejects silent async fallback.
+  - id: product-name-drift
+    symptom: App targets, symbols, documentation, or bundle identifiers use a legacy service nickname instead of Soundscape.
+    observable_signal: scripts/repo-guards.sh reports legacy product naming.
+    prevention: Keep Soundscape as the only product name and block every alternate product token or route in repository guards.
+  - id: backend-id-layout-coupling
+    symptom: A specific soundscape renders at a different size only because of its database primary key.
+    observable_signal: ExploreCardLayoutTests fails or repo guards detect primary-key arithmetic in Explore geometry.
+    prevention: Keep all card geometry in ExploreCardLayout and derive it from presentation requirements, never backend IDs.
+  - id: discovery-map-intrinsic-centering
+    symptom: The Discovery Map title appears halfway down the screen when loading fails or content is short.
+    observable_signal: scripts/repo-guards.sh reports a missing full-height, top-aligned Discovery Map root.
+    prevention: Keep the Discovery Map root full-height and derive map size from DiscoveryMapLayout.
+  - id: repeated-public-content-reloads
+    symptom: Switching tabs or relaunching reloads identical public content, and transient network failure empties the map.
+    observable_signal: CachedSoundscapeRepositoryTests or DiskPublicSoundscapeCacheTests fails.
+    prevention: Route Explore, Map, and Rankings through one actor-backed cache with explicit refresh, request coalescing, atomic persistence, bounded stale fallback, and mutation invalidation.
+  - id: manual-create-enrichment
+    symptom: Users must separately request location, title/description, and an AI cover after recording.
+    observable_signal: CreateSoundscapeViewModelTests fails or repo guards find manual enrichment calls in CreateSoundscapeView.
+    prevention: Keep location and AI enrichment in the single automatic CreateSoundscapeViewModel pipeline, preserving inline failure and edit-after-generation behavior.
+  - id: generic-ai-request-timeout
+    symptom: AI cover generation surfaces as a generic network failure around the default request timeout.
+    observable_signal: APIClientContractTests fails to observe the 180-second cover request timeout.
+    prevention: Keep endpoint-specific timeout values in RemoteSoundscapeRepository and structured path/status logging in APIClient.
+  - id: audio-only-soundscape-migration
+    symptom: Tapping a soundscape only starts a conventional music player or restores a client-generated particle substitute.
+    observable_signal: ImmersiveWorldTests or the immersive entry-point repository guard fails.
+    prevention: Route every public entry point through AudioPlayerController.openImmersive and render only the backend-owned, integrity-checked SPZ manifest with explicit non-ready states.
+  - id: false-positive-audio-playback
+    symptom: The UI shows pause as soon as playback is requested even though AVPlayer is still buffering, has failed, or the media itself is silent.
+    observable_signal: AudioPlayerControllerTests fails to keep isPlaying false until the engine reports active output.
+    prevention: Drive loading and playing from AVPlayer timeControlStatus, keep best-effort telemetry failures out of shared playback errors, show buffering and real playback errors explicitly, and audit suspicious production media independently from client state.
+  - id: main-thread-audio-session-activation
+    symptom: Opening an immersive world emits an AVAudioSession warning and can make the UI unresponsive while activating or deactivating playback.
+    observable_signal: Repository guards detect synchronous setActive calls outside AudioSessionLifecycle, or the physical immersive-world XCTest emits the AVAudioSession main-thread warning.
+    prevention: Use the iOS 27 asynchronous activation APIs, keep the iOS 18–26 synchronous fallback off the main thread, and serialize controller activation/deactivation so stale cleanup cannot deactivate new playback.
+  - id: testflight-missing-export-compliance
+    symptom: A processed TestFlight build remains unavailable to internal groups with Missing Compliance status, so invited testers receive no usable build invitation.
+    observable_signal: App Store Connect reports usesNonExemptEncryption as null and buildBetaDetails remains MISSING_EXPORT_COMPLIANCE.
+    prevention: Declare ITSAppUsesNonExemptEncryption=false in the generated app Info.plist and verify the TestFlight build reaches READY_TO_TEST before sending invitations.
+  - id: client-owned-ai-world-generation
+    symptom: iOS contains provider model IDs, prompt templates, direct AI API calls, ARKit capture, or reconstruction logic for immersive worlds.
+    observable_signal: World contract tests or repository guards detect AI provider/model/capture concepts outside the backend-owned world manifest boundary.
+    prevention: Keep every AI operation behind the backend Volcengine capability registry; iOS only downloads and renders typed SPZ world assets with permanent AI provenance.
+  - id: duplicate-bottom-navigation-renderers
+    symptom: A traditional custom tab bar appears on normal screens while an empty native Liquid Glass tab-bar capsule leaks into the full-screen player.
+    observable_signal: SoundscapeUITests reports a native TabBar on the player, or scripts/repo-guards.sh finds both TabView and SoundscapeTabBar in RootTabView.
+    prevention: RootTabView owns one custom four-item navigation renderer that stays composed under the player, remains non-hittable while covered, and never coexists with a native TabView.
+  - id: cancelled-player-swipe-offset
+    symptom: An interrupted swipe leaves the player partially offscreen with a black strip and the four-tab shell permanently stuck beside it.
+    observable_signal: SoundscapeUITests fails the interrupted-swipe settled-page assertion, or scripts/repo-guards.sh finds any interactive horizontal offset in RootTabView.
+    prevention: Keep the player and tab shell at fixed full-screen positions; recognize direction only when the swipe ends, then crossfade between the two settled screens without tracking finger translation.

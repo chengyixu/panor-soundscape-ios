@@ -1,0 +1,13 @@
+.DS_Store
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.build/
+workspace/
+Soundscape.xcodeproj/
+!Soundscape.xcodeproj/project.pbxproj
+!Soundscape.xcodeproj/project.xcworkspace/
+!Soundscape.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+!Soundscape.xcodeproj/xcshareddata/

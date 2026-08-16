@@ -1,0 +1,3 @@
+"NSMicrophoneUsageDescription" = "Used to record and publish real-world sounds.";
+"NSLocationWhenInUseUsageDescription" = "Used to place soundscapes at their recording locations; location is optional.";
+"NSPhotoLibraryUsageDescription" = "Used to choose a cover image for a soundscape.";

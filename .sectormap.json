@@ -1,0 +1,32 @@
+{
+  "label": "Soundscape iOS (SwiftUI)",
+  "lang": "swift",
+  "git_root": ".",
+  "src_base": "Sources/Soundscape",
+  "test_base": "Tests",
+  "import_prefix": "",
+  "resolve": "kt_pkg",
+  "catalog_project": "panor-soundscape-ios",
+  "sectors": [
+    {"id": "app", "root": "App"},
+    {"id": "shared/contracts", "root": "Shared/Contracts"},
+    {"id": "shared/networking", "root": "Shared/Networking"},
+    {"id": "shared/design-system", "root": "Shared/DesignSystem"},
+    {"id": "shared/infrastructure", "root": "Shared/Infrastructure"},
+    {"id": "shared/media", "root": "Shared/Media"},
+    {"id": "features", "root": "Features"}
+  ],
+  "behavior": [
+    ["protocol .*Repository", "typed repository boundary"],
+    ["@Observable", "Observation-owned presentation state"],
+    ["TabView\\(", "⚠ the custom app shell forbids native TabView chrome"],
+    ["URLSession", "⚠ URLSession is restricted to Shared/Networking"],
+    ["SecItem", "⚠ Keychain access is restricted to Shared/Infrastructure"],
+    ["try\\? await", "⚠ silent asynchronous failure is forbidden"]
+  ],
+  "boundaries_global": [
+    "Canonical source of truth: https://www.panor.tech/soundscape/api/openapi.json",
+    "Authentication: https://www.panor.tech/api/panor/auth",
+    "Microphone, photo picker, location, and AVPlayer are explicit native ports"
+  ]
+}

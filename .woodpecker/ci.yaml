@@ -1,0 +1,37 @@
+steps:
+  guards:
+    image: alpine:3.20
+    commands:
+      - apk add --no-cache bash ripgrep
+      - scripts/repo-guards.sh
+  contract-snapshot:
+    image: alpine:3.20
+    commands:
+      - apk add --no-cache bash curl jq diffutils
+      - scripts/verify-api-contract.sh
+  ios-build-test:
+    image: apple-xcode:latest
+    commands:
+      - scripts/ci.sh
+  ci-success:
+    image: alpine:3.20
+    depends_on: [guards, contract-snapshot, ios-build-test]
+    commands:
+      - apk add --no-cache bash curl jq openssl coreutils
+      - bash .woodpecker/ci-success-bridge.sh success
+    environment:
+      NEXORA_APP_ID: "2705324"
+      NEXORA_APP_PRIVATE_KEY:
+        from_secret: nexora_app_private_key
+  ci-failure:
+    image: alpine:3.20
+    depends_on: [guards, contract-snapshot, ios-build-test]
+    commands:
+      - apk add --no-cache bash curl jq openssl coreutils
+      - bash .woodpecker/ci-success-bridge.sh failure
+    environment:
+      NEXORA_APP_ID: "2705324"
+      NEXORA_APP_PRIVATE_KEY:
+        from_secret: nexora_app_private_key
+    when:
+      - status: failure
