@@ -1,5 +1,50 @@
 import SwiftUI
 
+enum VinylIndicatorLayout {
+    static let diameter: CGFloat = 44
+    static let horizontalMargin: CGFloat = 20
+    static let topMargin: CGFloat = 16
+    static let tabBarHeight: CGFloat = 56
+    static let tabBarGap: CGFloat = 16
+
+    static func bottomPadding(safeAreaBottom: CGFloat) -> CGFloat {
+        safeAreaBottom + tabBarHeight + tabBarGap
+    }
+
+    static func baseCenter(in size: CGSize, safeAreaBottom: CGFloat) -> CGPoint {
+        CGPoint(
+            x: size.width - horizontalMargin - diameter / 2,
+            y: size.height - bottomPadding(safeAreaBottom: safeAreaBottom) - diameter / 2
+        )
+    }
+
+    static func clampedOffset(
+        _ offset: CGSize,
+        in size: CGSize,
+        safeAreaTop: CGFloat,
+        safeAreaBottom: CGFloat
+    ) -> CGSize {
+        let base = baseCenter(in: size, safeAreaBottom: safeAreaBottom)
+        let minimumCenter = CGPoint(
+            x: horizontalMargin + diameter / 2,
+            y: safeAreaTop + topMargin + diameter / 2
+        )
+        let maximumCenter = CGPoint(
+            x: max(minimumCenter.x, size.width - horizontalMargin - diameter / 2),
+            y: max(
+                minimumCenter.y,
+                size.height - bottomPadding(safeAreaBottom: safeAreaBottom) - diameter / 2
+            )
+        )
+        let center = CGPoint(
+            x: min(maximumCenter.x, max(minimumCenter.x, base.x + offset.width)),
+            y: min(maximumCenter.y, max(minimumCenter.y, base.y + offset.height))
+        )
+        return CGSize(width: center.x - base.x, height: center.y - base.y)
+    }
+
+}
+
 struct VinylRecordArtwork: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isRotating: Bool
@@ -66,7 +111,7 @@ struct VinylIndicatorButton: View {
             }
         } label: {
             VinylRecordArtwork(isRotating: player.isPlaying)
-                .frame(width: 44, height: 44)
+                .frame(width: VinylIndicatorLayout.diameter, height: VinylIndicatorLayout.diameter)
                 .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
                 .contentShape(Circle())
         }
@@ -74,6 +119,7 @@ struct VinylIndicatorButton: View {
         .disabled(player.current == nil)
         .opacity(player.current == nil ? 0.22 : 1.0)
         .accessibilityLabel(loc(.playerOpenPlayer))
+        .accessibilityHint(loc(.playerMoveIndicatorHint))
         .accessibilityIdentifier("vinyl-player-indicator")
         .environment(\.locale, Locale(identifier: locale.rawValue))
     }

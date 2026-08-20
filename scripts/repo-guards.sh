@@ -138,10 +138,11 @@ else
   pass 'single bottom navigation rendering system'
 fi
 
+navigation_gesture_body="$(sed -n '/private func screenTransitionGesture/,/private func vinylDragGesture/p' Sources/Soundscape/App/RootTabView.swift)"
 if ! rg -q 'screenTransitionAnimation' Sources/Soundscape/App/RootTabView.swift || \
    ! rg -q 'simultaneousGesture\(screenTransitionGesture' Sources/Soundscape/App/RootTabView.swift || \
-   ! rg -q '\.onEnded' Sources/Soundscape/App/RootTabView.swift || \
-   rg -q 'navigationDrag|PlayerPagingLayout|UIGestureRecognizerRepresentable|\.offset\(x:|\.onChanged|\.updating' Sources/Soundscape/App/RootTabView.swift; then
+   ! printf '%s\n' "$navigation_gesture_body" | rg -q '\.onEnded' || \
+   printf '%s\n' "$navigation_gesture_body" | rg -q 'navigationDrag|PlayerPagingLayout|UIGestureRecognizerRepresentable|\.offset\(x:|\.onChanged|\.updating'; then
   fail 'player navigation must be a release-triggered full-screen fade with no interactive offset'
 else
   pass 'non-interactive full-screen player fade'

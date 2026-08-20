@@ -196,6 +196,25 @@ final class SoundscapeUITests: XCTestCase {
         XCTAssertFalse(miniVinyl.exists)
     }
 
+    func testMiniVinylCanBeDraggedWithoutOpeningPlayer() {
+        let app = makeApp()
+        app.launch()
+
+        openTurntable(in: app)
+        dragHorizontally(in: app, fromX: 0.50, toX: 0.12, velocity: .fast)
+
+        let miniVinyl = app.buttons["vinyl-player-indicator"]
+        XCTAssertTrue(miniVinyl.waitForExistence(timeout: 8))
+        let initialFrame = miniVinyl.frame
+        let start = miniVinyl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.54, dy: 0.66))
+        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0)
+
+        XCTAssertTrue(miniVinyl.waitForExistence(timeout: 2))
+        XCTAssertLessThan(miniVinyl.frame.minY, initialFrame.minY)
+        XCTAssertFalse(app.otherElements["turntable-player"].isHittable)
+    }
+
     func testPlayerSwipesBackToLastScreenAndRestoresFromEverySurface() {
         let app = makeApp()
         app.launch()

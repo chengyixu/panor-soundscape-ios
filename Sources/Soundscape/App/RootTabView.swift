@@ -19,6 +19,8 @@ struct RootTabView: View {
     @State private var hasHandledForYouLaunch = false
     @State private var hasNavigatedSinceLaunch = false
     @State private var automaticLaunchError: AppError?
+    @State private var vinylDragOffset = CGSize.zero
+    @State private var vinylDragStartOffset: CGSize?
 
     var body: some View {
         let locale = localeManager.current
@@ -31,6 +33,7 @@ struct RootTabView: View {
                     .opacity(playerPresented ? 0 : 1)
                     .allowsHitTesting(!playerPresented)
                     .accessibilityHidden(playerPresented)
+                    .simultaneousGesture(screenTransitionGesture(width: proxy.size.width))
 
                 if let soundscape = container.player.presentedSoundscape ?? container.player.current {
                     TurntablePlayerView(
@@ -41,17 +44,35 @@ struct RootTabView: View {
                     .opacity(playerPresented ? 1 : 0)
                     .allowsHitTesting(playerPresented)
                     .accessibilityHidden(!playerPresented)
+                    .simultaneousGesture(screenTransitionGesture(width: proxy.size.width))
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .contentShape(Rectangle())
             .animation(screenTransitionAnimation, value: playerPresented)
-            .simultaneousGesture(screenTransitionGesture(width: proxy.size.width))
-            .overlay(alignment: Alignment.topTrailing) {
+            .overlay(alignment: .bottomTrailing) {
                 if !playerPresented {
+                    let vinylOffset = VinylIndicatorLayout.clampedOffset(
+                        vinylDragOffset,
+                        in: proxy.size,
+                        safeAreaTop: proxy.safeAreaInsets.top,
+                        safeAreaBottom: proxy.safeAreaInsets.bottom
+                    )
+
                     VinylIndicatorButton(player: container.player)
-                        .padding(.trailing, 16)
-                        .padding(.top, max(proxy.safeAreaInsets.top + 8, 16))
+                        .padding(.trailing, VinylIndicatorLayout.horizontalMargin)
+                        .padding(.bottom, VinylIndicatorLayout.bottomPadding(safeAreaBottom: proxy.safeAreaInsets.bottom))
+                        .offset(vinylOffset)
+                        .transaction { transaction in
+                            transaction.animation = nil
+                        }
+                        .gesture(
+                            vinylDragGesture(
+                                in: proxy.size,
+                                safeAreaTop: proxy.safeAreaInsets.top,
+                                safeAreaBottom: proxy.safeAreaInsets.bottom
+                            )
+                        )
                         .transition(.opacity.combined(with: .scale(scale: 0.86, anchor: .center)))
                 }
             }
@@ -61,6 +82,9 @@ struct RootTabView: View {
         .task { await handleAutomaticLaunch() }
         .onChange(of: selection) { previous, current in
             if previous != current { hasNavigatedSinceLaunch = true }
+        }
+        .onChange(of: container.player.presentedSoundscape != nil) { _, _ in
+            vinylDragStartOffset = nil
         }
         .alert(loc(.forYouCannotAutoPlay), isPresented: automaticLaunchErrorBinding) {
             Button(loc(.generalOK)) { automaticLaunchError = nil }
@@ -143,6 +167,70 @@ struct RootTabView: View {
                     container.player.presentCurrentPlayer()
                 }
             }
+    }
+
+    private func vinylDragGesture(
+        in size: CGSize,
+        safeAreaTop: CGFloat,
+        safeAreaBottom: CGFloat
+    ) -> some Gesture {
+        DragGesture(minimumDistance: 5)
+            .onChanged { value in
+                let startOffset = vinylDragStartOffset ?? vinylDragOffset
+                let nextOffset = clampedVinylOffset(
+                    startOffset: startOffset,
+                    translation: value.translation,
+                    in: size,
+                    safeAreaTop: safeAreaTop,
+                    safeAreaBottom: safeAreaBottom
+                )
+
+                withoutAnimation {
+                    if vinylDragStartOffset == nil {
+                        vinylDragStartOffset = startOffset
+                    }
+                    vinylDragOffset = nextOffset
+                }
+            }
+            .onEnded { value in
+                let startOffset = vinylDragStartOffset ?? vinylDragOffset
+                let finalOffset = clampedVinylOffset(
+                    startOffset: startOffset,
+                    translation: value.translation,
+                    in: size,
+                    safeAreaTop: safeAreaTop,
+                    safeAreaBottom: safeAreaBottom
+                )
+
+                withoutAnimation {
+                    vinylDragOffset = finalOffset
+                    vinylDragStartOffset = nil
+                }
+            }
+    }
+
+    private func clampedVinylOffset(
+        startOffset: CGSize,
+        translation: CGSize,
+        in size: CGSize,
+        safeAreaTop: CGFloat,
+        safeAreaBottom: CGFloat
+    ) -> CGSize {
+        VinylIndicatorLayout.clampedOffset(
+            CGSize(
+                width: startOffset.width + translation.width,
+                height: startOffset.height + translation.height
+            ),
+            in: size,
+            safeAreaTop: safeAreaTop,
+            safeAreaBottom: safeAreaBottom
+        )
+    }
+
+    private func withoutAnimation(_ update: () -> Void) {
+        var transaction = Transaction()
+        transaction.animation = nil
+        withTransaction(transaction, update)
     }
 
     private var screenTransitionAnimation: Animation? {

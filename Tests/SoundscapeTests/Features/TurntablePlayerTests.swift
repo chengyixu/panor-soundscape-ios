@@ -139,4 +139,38 @@ final class TurntablePlayerTests: XCTestCase {
         ))
     }
 
+    func testFloatingVinylDefaultPositionSitsAboveTheTabBar() {
+        let center = VinylIndicatorLayout.baseCenter(
+            in: CGSize(width: 390, height: 844),
+            safeAreaBottom: 34
+        )
+
+        XCTAssertEqual(center.x, 348, accuracy: 0.01)
+        XCTAssertEqual(center.y, 716, accuracy: 0.01)
+    }
+
+    func testFloatingVinylDefaultPositionAccountsForDevicesWithoutBottomInset() {
+        let center = VinylIndicatorLayout.baseCenter(
+            in: CGSize(width: 390, height: 844),
+            safeAreaBottom: 0
+        )
+
+        XCTAssertEqual(center.x, 348, accuracy: 0.01)
+        XCTAssertEqual(center.y, 750, accuracy: 0.01)
+    }
+
+    func testFloatingVinylDragStaysInsideSafeContentBounds() {
+        let size = CGSize(width: 390, height: 844)
+        let offset = VinylIndicatorLayout.clampedOffset(
+            CGSize(width: -1_000, height: -1_000),
+            in: size,
+            safeAreaTop: 59,
+            safeAreaBottom: 34
+        )
+        let center = VinylIndicatorLayout.baseCenter(in: size, safeAreaBottom: 34)
+
+        XCTAssertEqual(center.x + offset.width, 42, accuracy: 0.01)
+        XCTAssertEqual(center.y + offset.height, 97, accuracy: 0.01)
+    }
+
 }

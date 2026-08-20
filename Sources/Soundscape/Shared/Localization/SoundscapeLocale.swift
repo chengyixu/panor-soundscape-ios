@@ -95,6 +95,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerPause
     case playerPlay
     case playerOpenPlayer
+    case playerMoveIndicatorHint
     case playerClosePlayer
     case playerFeedbackTitle
     case playerFeedbackDetail
@@ -409,6 +410,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerPause: "暂停"
         case .playerPlay: "播放"
         case .playerOpenPlayer: "打开播放器"
+        case .playerMoveIndicatorHint: "拖动唱片图标移动；点击打开播放器"
         case .playerClosePlayer: "关闭播放器"
         case .playerFeedbackTitle: "这段声音适合你吗？"
         case .playerFeedbackDetail: "反馈会优先调整当前会话，再缓慢更新长期偏好。"
@@ -701,6 +703,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerPause: "Pause"
         case .playerPlay: "Play"
         case .playerOpenPlayer: "Open player"
+        case .playerMoveIndicatorHint: "Drag the record to move it; tap to open the player"
         case .playerClosePlayer: "Close player"
         case .playerFeedbackTitle: "Does this sound fit?"
         case .playerFeedbackDetail: "Feedback adjusts this session first, then updates long-term taste more slowly."
@@ -993,6 +996,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerPause: "暫停"
         case .playerPlay: "播放"
         case .playerOpenPlayer: "開啟播放器"
+        case .playerMoveIndicatorHint: "拖動唱片圖示移動；點擊開啟播放器"
         case .playerClosePlayer: "關閉播放器"
         case .playerFeedbackTitle: "這段聲音適合你嗎？"
         case .playerFeedbackDetail: "回饋會優先調整目前工作階段，再緩慢更新長期偏好。"
