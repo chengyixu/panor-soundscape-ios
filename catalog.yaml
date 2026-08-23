@@ -1,5 +1,9 @@
 project: panor-soundscape-ios
 entries:
+  - id: transient-network-single-attempt
+    symptom: A momentary radio or packet blip surfaces as a full-screen "Failed to load soundscapes" network error even though a second manual refresh succeeds.
+    observable_signal: APIClientRetryTests fails, or LibraryViewModelTests stale-refresh guard fails.
+    prevention: Retry idempotent GET requests once on transport errors inside APIClient and never let a stale LibraryViewModel load overwrite a newer one.
   - id: contract-drift
     symptom: Swift decoding or request construction diverges from the Soundscape FastAPI contract.
     observable_signal: scripts/verify-api-contract.sh fails or contract tests turn red.

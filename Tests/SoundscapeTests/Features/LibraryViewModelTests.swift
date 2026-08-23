@@ -29,4 +29,21 @@ final class LibraryViewModelTests: XCTestCase {
         XCTAssertEqual(model.mutationError, .authenticationRequired)
         guard case .idle = model.state else { return XCTFail("Failed mutation must not report refreshed state") }
     }
+
+    func testStaleLoadCannotOverwriteNewerSuccessfulRefresh() async {
+        let repository = StubSoundscapeRepository()
+        await repository.setMineDelay(.milliseconds(100))
+        await repository.setMineResult(.success([]))
+        let model = LibraryViewModel(repository: repository)
+
+        async let staleLoad: Void = model.load()
+        try? await Task.sleep(for: .milliseconds(10))
+        await repository.setMineDelay(nil)
+        await repository.setMineResult(.success([TestFixtures.soundscape]))
+        async let freshRefresh: Void = model.load()
+        _ = await (staleLoad, freshRefresh)
+
+        guard case .loaded(let items) = model.state else { return XCTFail("Expected loaded library") }
+        XCTAssertEqual(items, [TestFixtures.soundscape])
+    }
 }

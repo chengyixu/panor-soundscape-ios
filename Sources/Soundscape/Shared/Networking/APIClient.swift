@@ -29,6 +29,8 @@ struct APIErrorEnvelope: Decodable, Sendable {
 }
 
 actor APIClient {
+    private static let transportRetryDelay: Duration = .milliseconds(400)
+
     private let transport: any HTTPTransport
     private let tokenStore: any AuthTokenStore
     private let decoder = JSONDecoder()
@@ -121,6 +123,30 @@ actor APIClient {
     }
 
     private func execute<Response: Decodable & Sendable>(_ request: URLRequest) async throws -> Response {
+        do {
+            return try await performOnce(request)
+        } catch let error as AppError {
+            guard request.httpMethod == "GET", case .transport = error else { throw error }
+            guard !Task.isCancelled else { throw error }
+            logger.info("Retrying idempotent request path=\(request.url?.path ?? "unknown", privacy: .public) after=\(String(describing: error), privacy: .public)")
+            try? await Task.sleep(for: Self.transportRetryDelay)
+            do {
+                return try await performOnce(request)
+            } catch let retryError as AppError {
+                throw retryError
+            } catch {
+                throw AppError.transport(String(describing: type(of: error)))
+            }
+        } catch let error as URLError {
+            logger.error("Transport failed path=\(request.url?.path ?? "unknown", privacy: .public) code=\(error.code.rawValue)")
+            throw AppError.transport("URLError.\(error.code.rawValue)")
+        } catch {
+            logger.error("Transport failed path=\(request.url?.path ?? "unknown", privacy: .public) type=\(String(describing: type(of: error)), privacy: .public)")
+            throw AppError.transport(String(describing: type(of: error)))
+        }
+    }
+
+    private func performOnce<Response: Decodable & Sendable>(_ request: URLRequest) async throws -> Response {
         do {
             let (data, response) = try await transport.data(for: request)
             guard (200..<300).contains(response.statusCode) else {

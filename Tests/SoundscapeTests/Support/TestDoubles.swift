@@ -75,6 +75,17 @@ actor StubHTTPTransport: HTTPTransport {
     struct Stub: Sendable {
         let data: Data
         let status: Int
+        var error: AppError?
+
+        init(data: Data, status: Int, error: AppError? = nil) {
+            self.data = data
+            self.status = status
+            self.error = error
+        }
+
+        static func failure(_ error: AppError) -> Stub {
+            Stub(data: Data(), status: 0, error: error)
+        }
     }
 
     private var stubs: [Stub]
@@ -86,6 +97,7 @@ actor StubHTTPTransport: HTTPTransport {
         requests.append(request)
         guard !stubs.isEmpty else { throw AppError.transport("missing stub") }
         let stub = stubs.removeFirst()
+        if let error = stub.error { throw error }
         let response = HTTPURLResponse(
             url: request.url!,
             statusCode: stub.status,
@@ -111,9 +123,11 @@ actor StubSoundscapeRepository: SoundscapeRepository {
     private(set) var explorePolicies: [RepositoryReadPolicy] = []
     private(set) var rankingCallCount = 0
     private var exploreDelay: Duration?
+    private var mineDelay: Duration?
 
     func setExploreResult(_ result: Result<[Soundscape], AppError>) { exploreResult = result }
     func setExploreDelay(_ delay: Duration?) { exploreDelay = delay }
+    func setMineDelay(_ delay: Duration?) { mineDelay = delay }
     func setRankingResult(_ result: Result<[RankingLane], AppError>) { rankingResult = result }
     func setMineResult(_ result: Result<[Soundscape], AppError>) { mineResult = result }
     func setReportPlayResult(_ result: Result<PlayResponse, AppError>) { reportPlayResult = result }
@@ -129,7 +143,15 @@ actor StubSoundscapeRepository: SoundscapeRepository {
         rankingCallCount += 1
         return try rankingResult.get()
     }
-    func mine() async throws -> [Soundscape] { try mineResult.get() }
+    nonisolated func mine() async throws -> [Soundscape] {
+        if let delay = await pendingMineDelay() {
+            try await Task.sleep(for: delay)
+        }
+        return try await currentMine()
+    }
+
+    private func pendingMineDelay() -> Duration? { mineDelay }
+    private func currentMine() throws -> [Soundscape] { try mineResult.get() }
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape {
         createdDraft = draft
         return TestFixtures.soundscape
