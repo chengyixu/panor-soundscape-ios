@@ -81,6 +81,35 @@ final class TurntablePlayerTests: XCTestCase {
         )
     }
 
+    func testTonearmBrowsingMovesTheStylusAlongThePivotArcAndKeepsTheNeedleTangent() {
+        let size = CGSize(width: 390, height: 844)
+        let recordDiameter: CGFloat = 498
+        let recordTop: CGFloat = 101
+        let resting = TonearmAssemblyLayout.geometry(
+            in: size,
+            recordDiameter: recordDiameter,
+            recordTop: recordTop,
+            parkProgress: 0,
+            browseOffset: 0
+        )
+        let browsed = TonearmAssemblyLayout.geometry(
+            in: size,
+            recordDiameter: recordDiameter,
+            recordTop: recordTop,
+            parkProgress: 0,
+            browseOffset: 2
+        )
+
+        let restingRadius = hypot(resting.headAnchor.x - resting.pivot.x, resting.headAnchor.y - resting.pivot.y)
+        let browsedRadius = hypot(browsed.headAnchor.x - browsed.pivot.x, browsed.headAnchor.y - browsed.pivot.y)
+        let radialAngle = atan2(browsed.headAnchor.y - browsed.pivot.y, browsed.headAnchor.x - browsed.pivot.x)
+
+        XCTAssertLessThan(browsed.headAnchor.y, resting.headAnchor.y)
+        XCTAssertLessThan(browsed.headAnchor.x, resting.headAnchor.x, "Browsing must follow the pivot arc instead of a vertical line")
+        XCTAssertEqual(browsedRadius, restingRadius, accuracy: 0.01)
+        XCTAssertEqual(browsed.headAngle, radialAngle + (.pi / 2), accuracy: 0.0001)
+    }
+
     func testPlayerAndExploreSwipesAreDirectionalAndAvoidTheTonearm() {
         XCTAssertTrue(TurntableNavigationGesture.shouldDismissPlayer(
             translation: CGSize(width: -100, height: 8),

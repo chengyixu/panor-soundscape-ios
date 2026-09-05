@@ -85,18 +85,41 @@ enum TonearmAssemblyLayout {
         browseOffset: Int
     ) -> Geometry {
         let pivot = CGPoint(x: size.width - 64, y: recordTop + 54)
-        let onRecord = CGPoint(x: size.width - 82, y: recordTop + recordDiameter * 0.79)
+        let restingStylusAnchor = CGPoint(x: size.width - 82, y: recordTop + recordDiameter * 0.79)
         let parked = CGPoint(x: size.width - 18, y: recordTop + recordDiameter * 0.88)
-        let browseLift = CGFloat(browseOffset) * -3
+
+        // Browsing is a rotation about the pivot, not a vertical translation.
+        // The prior implementation changed only `y`, which made the stylus
+        // travel straight up and down. Keeping the arm radius constant makes
+        // the contact point follow the pivot arc; its movement is therefore
+        // tangent to the record at every detent.
+        let armRadius = hypot(
+            restingStylusAnchor.x - pivot.x,
+            restingStylusAnchor.y - pivot.y
+        )
+        let requestedY = restingStylusAnchor.y - CGFloat(browseOffset) * 18
+        let limitedY = min(
+            pivot.y + armRadius - 1,
+            max(pivot.y - armRadius + 1, requestedY)
+        )
+        let verticalDistance = limitedY - pivot.y
+        let horizontalDistance = sqrt(max(0, armRadius * armRadius - verticalDistance * verticalDistance))
+        let onRecord = CGPoint(
+            x: pivot.x - horizontalDistance,
+            y: limitedY
+        )
         let headAnchor = CGPoint(
             x: onRecord.x + ((parked.x - onRecord.x) * parkProgress),
-            y: onRecord.y + ((parked.y - onRecord.y) * parkProgress) + browseLift
+            y: onRecord.y + ((parked.y - onRecord.y) * parkProgress)
         )
         let control = CGPoint(
             x: size.width + 3,
             y: pivot.y + ((headAnchor.y - pivot.y) * 0.49)
         )
-        let headAngle = atan2(headAnchor.y - control.y, headAnchor.x - control.x)
+        let armAngle = atan2(onRecord.y - pivot.y, onRecord.x - pivot.x)
+        // The headshell/stylus stays perpendicular to the pivot radius. This
+        // gives the needle a tangential orientation while it follows the arc.
+        let headAngle = armAngle + (.pi / 2)
 
         return Geometry(
             pivot: pivot,
@@ -267,12 +290,23 @@ struct TurntablePlayerView: View {
 
     private func header(in size: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
-            if showsTrackList {
-                Text(loc(.playerSelectTrack))
-                    .font(.headline.weight(.medium))
-                    .transition(.opacity)
-                    .position(x: size.width / 2, y: 22)
+            Button {
+                player.dismissPlayer(stopPlayback: false)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 19, weight: .semibold))
+                    .frame(width: 44, height: 44)
             }
+            .accessibilityLabel(loc(.generalBack))
+            .accessibilityIdentifier("turntable-back")
+            .position(x: 34, y: 22)
+
+            Text(showsTrackList ? loc(.playerSelectTrack) : soundscape.displayTitle)
+                .font(.headline.weight(.medium))
+                .lineLimit(1)
+                .frame(maxWidth: max(0, size.width - 144))
+                .transition(.opacity)
+                .position(x: size.width / 2, y: 22)
 
             Button {
                 Task { _ = await player.toggleSavedCurrent() }

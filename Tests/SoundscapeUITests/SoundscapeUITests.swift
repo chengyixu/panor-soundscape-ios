@@ -176,8 +176,22 @@ final class SoundscapeUITests: XCTestCase {
         app.launch()
 
         openTurntable(in: app)
+        XCTAssertTrue(app.buttons["turntable-back"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["vinyl-player-indicator"].exists)
         capture("Soundscape-Turntable")
+    }
+
+    func testTurntableTopLeadingBackButtonReturnsToThePreviousSurface() {
+        let app = makeApp()
+        app.launch()
+
+        openTurntable(in: app)
+        let back = app.buttons["turntable-back"]
+        XCTAssertTrue(back.waitForExistence(timeout: 3))
+        back.tap()
+
+        XCTAssertTrue(app.buttons["探索"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.otherElements["turntable-player"].isHittable)
     }
 
     func testMiniVinylRestoresPlayerAndHidesInsidePlayer() {
