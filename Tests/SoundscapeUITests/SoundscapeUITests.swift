@@ -123,6 +123,19 @@ final class SoundscapeUITests: XCTestCase {
         capture("Soundscape-Map-Loaded")
     }
 
+    func testCapturesTurntableMetadataOnlyState() {
+        let app = makeApp()
+        app.launch()
+        openTurntable(in: app)
+
+        XCTAssertFalse(app.staticTexts["唱针位于唱片上"].exists)
+        XCTAssertFalse(app.staticTexts["为你推荐"].exists)
+        XCTAssertFalse(app.staticTexts["為你推薦"].exists)
+
+        waitForVisualSettling()
+        capture("Soundscape-Player-Metadata")
+    }
+
     func testPrimarySurfacesSupportAccessibilityXXXL() {
         let app = makeApp()
         app.launchArguments += [
