@@ -17,13 +17,27 @@ final class TurntablePlayerTests: XCTestCase {
 
         XCTAssertEqual(player.presentedSoundscape, TestFixtures.soundscape)
         XCTAssertEqual(player.current, TestFixtures.soundscape)
-        XCTAssertEqual(player.sourceLine, "wilsonxu · Made for you · Bao'an District · 盐田新一村九巷")
+        XCTAssertEqual(player.sourceLine, "wilsonxu · Bao'an District · 盐田新一村九巷")
         XCTAssertTrue(player.isBuffering)
         XCTAssertFalse(player.isPlaying)
 
         engine.startPlaying()
 
         XCTAssertTrue(player.isPlaying)
+    }
+
+    func testPlayerMetadataDoesNotExposeWhereTheRecordingWasRecommended() {
+        let soundscape = TestFixtures.soundscape
+        let lines = [
+            AudioPlayerController.Source.madeForYou,
+            .explore,
+            .map,
+            .rankings,
+            .library,
+            .direct
+        ].map { $0.line(for: soundscape) }
+
+        XCTAssertEqual(Set(lines), ["wilsonxu · Bao'an District · 盐田新一村九巷"])
     }
 
     func testVerticalGestureBrowsesAndHorizontalGestureParks() {

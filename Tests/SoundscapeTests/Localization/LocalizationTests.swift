@@ -25,22 +25,31 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
-    func testPlayerSourceAndServerErrorsFollowSelectedLocale() {
+    func testPlayerMetadataDoesNotExposeRecommendationSourceAndServerErrorsFollowSelectedLocale() {
         let originalLocale = LocaleManager.shared.current
         defer { LocaleManager.shared.current = originalLocale }
 
         LocaleManager.shared.current = .en
-        XCTAssertTrue(AudioPlayerController.Source.madeForYou.line(for: TestFixtures.soundscape).contains("Made for you"))
+        XCTAssertEqual(
+            AudioPlayerController.Source.madeForYou.line(for: TestFixtures.soundscape),
+            "wilsonxu · Bao'an District · 盐田新一村九巷"
+        )
         XCTAssertEqual(
             AppError.server(status: 503, code: "rankings_unavailable", message: "稍后再试").userMessage,
             SoundscapeLocale.errorServerFailed.localized(for: .en)
         )
 
         LocaleManager.shared.current = .zhHans
-        XCTAssertTrue(AudioPlayerController.Source.madeForYou.line(for: TestFixtures.soundscape).contains("为你推荐"))
+        XCTAssertEqual(
+            AudioPlayerController.Source.madeForYou.line(for: TestFixtures.soundscape),
+            "wilsonxu · Bao'an District · 盐田新一村九巷"
+        )
 
         LocaleManager.shared.current = .zhHant
-        XCTAssertTrue(AudioPlayerController.Source.madeForYou.line(for: TestFixtures.soundscape).contains("為你推薦"))
+        XCTAssertEqual(
+            AudioPlayerController.Source.madeForYou.line(for: TestFixtures.soundscape),
+            "wilsonxu · Bao'an District · 盐田新一村九巷"
+        )
     }
 
     private func containsHanCharacters(_ value: String) -> Bool {

@@ -264,14 +264,10 @@ final class AudioPlayerController {
         func line(for soundscape: Soundscape) -> String {
             let location = soundscape.locationDisplay
             let author = soundscape.authorDisplay
-            return switch self {
-            case .madeForYou: "\(author) · \(loc(.playerMadeForYou)) · \(location)"
-            case .explore: "\(author) · \(loc(.playerFromExplore)) · \(location)"
-            case .map: "\(author) · \(loc(.playerFromMap)) · \(location)"
-            case .rankings: "\(author) · \(loc(.playerFromRankings)) · \(location)"
-            case .library: "\(author) · \(loc(.playerYourRecording)) · \(location)"
-            case .direct: "\(author) · \(location)"
-            }
+            // The player surface should describe the recording itself, not how
+            // the user reached it. Source remains available for playback and
+            // recommendation behavior, but metadata stays author + location.
+            return "\(author) · \(location)"
         }
     }
 

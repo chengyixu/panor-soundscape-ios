@@ -104,7 +104,9 @@ struct ExploreView: View {
     }
 
     private func discovery(for items: [Soundscape]) -> some View {
-        let popularTerms = ExploreDiscovery.popularTerms(from: items)
+        // Terms are generated from the live rankings response; when rankings
+        // are unavailable the view model falls back to the live explore rows.
+        let popularTerms = model.popularTerms
         let recordings = ExploreDiscovery.ordered(items)
 
         return VStack(alignment: .leading, spacing: 30) {

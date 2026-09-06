@@ -334,16 +334,6 @@ struct TurntablePlayerView: View {
                 .foregroundStyle(SoundscapeTheme.playerSecondaryInk)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(player.isPlaying ? .white : .clear)
-                    .overlay { Circle().stroke(.white.opacity(0.7), lineWidth: 1) }
-                    .frame(width: 7, height: 7)
-                Text(playbackStateLabel)
-                    .font(.caption)
-                    .foregroundStyle(SoundscapeTheme.playerSecondaryInk)
-            }
-            .padding(.top, 3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
