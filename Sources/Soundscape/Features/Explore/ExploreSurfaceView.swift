@@ -10,7 +10,7 @@ struct ExploreSurfaceView: View {
         let locale = localeManager.current
 
         VStack(spacing: 0) {
-            HStack(spacing: 28) {
+            HStack(spacing: 0) {
                 ForEach(ExploreSurfaceMode.allCases, id: \.self) { mode in
                     Button {
                         self.mode = mode
@@ -25,9 +25,11 @@ struct ExploreSurfaceView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("explore-mode-\(mode.rawValue)")
                 }
-                Spacer()
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, SoundscapeTheme.screenPadding)
             .padding(.top, 12)
             .overlay(alignment: .bottom) {

@@ -42,9 +42,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case exploreFacetDuration
 
     // MARK: - Map
-    case mapEyebrow
     case mapTitle
-    case mapDetail
     case mapLoading
     case mapEmpty
     case mapEmptyTitle
@@ -54,9 +52,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case mapRecording
 
     // MARK: - Rankings
-    case rankingsEyebrow
     case rankingsTitle
-    case rankingsDetail
     case rankingsStillForming
     case rankingsPlayAndSaveHelp
     case rankingsNatureParks
@@ -361,9 +357,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .exploreFacetCategory: "类别"
         case .exploreFacetRecording: "声音"
         case .exploreFacetDuration: "时长"
-        case .mapEyebrow: "声音地图"
         case .mapTitle: "声音落在地图上"
-        case .mapDetail: "每个黑点都是一段真实录音；选择地点即可查看作者并开始播放。"
         case .mapLoading: "正在读取录音坐标"
         case .mapEmpty: "还没有地图声景，带位置发布的录音会出现在这里。"
         case .mapEmptyTitle: "地图上还没有录音"
@@ -371,9 +365,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .mapSelectedRecording: "已选录音"
         case .mapPlayThis: "播放这段录音"
         case .mapRecording: "地图录音"
-        case .rankingsEyebrow: "社区精选"
         case .rankingsTitle: "最多播放的声景"
-        case .rankingsDetail: "大家都喜欢的声音。"
         case .rankingsStillForming: "榜单还在形成，播放和收藏会让真实声景逐渐排出顺序。"
         case .rankingsPlayAndSaveHelp: "播放和收藏会让真实声景逐渐排出顺序。"
         case .rankingsNatureParks: "自然公园"
@@ -654,9 +646,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .exploreFacetCategory: "Category"
         case .exploreFacetRecording: "Recording"
         case .exploreFacetDuration: "Duration"
-        case .mapEyebrow: "Field atlas"
         case .mapTitle: "Sounds on the map"
-        case .mapDetail: "Each dot is a real recording. Tap a location to see the author and start listening."
         case .mapLoading: "Loading recording coordinates"
         case .mapEmpty: "No map soundscapes yet. Recordings with locations will appear here."
         case .mapEmptyTitle: "No recordings on the map yet"
@@ -664,9 +654,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .mapSelectedRecording: "SELECTED RECORDING"
         case .mapPlayThis: "Play this recording"
         case .mapRecording: "Map recording"
-        case .rankingsEyebrow: "Community picks"
         case .rankingsTitle: "Most played soundscapes"
-        case .rankingsDetail: "Sounds the community loves."
         case .rankingsStillForming: "Rankings are still forming. Plays and saves will shape the order."
         case .rankingsPlayAndSaveHelp: "Plays and saves will shape the order."
         case .rankingsNatureParks: "Nature & Parks"
@@ -947,9 +935,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .exploreFacetCategory: "類別"
         case .exploreFacetRecording: "聲音"
         case .exploreFacetDuration: "時長"
-        case .mapEyebrow: "聲音地圖"
         case .mapTitle: "聲音落在地圖上"
-        case .mapDetail: "每個黑點都是一段真實錄音；選擇地點即可檢視作者並開始播放。"
         case .mapLoading: "正在讀取錄音座標"
         case .mapEmpty: "還沒有地圖聲景，帶位置發佈的錄音會出現在這裡。"
         case .mapEmptyTitle: "地圖上還沒有錄音"
@@ -957,9 +943,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .mapSelectedRecording: "已選錄音"
         case .mapPlayThis: "播放這段錄音"
         case .mapRecording: "地圖錄音"
-        case .rankingsEyebrow: "社群精選"
         case .rankingsTitle: "最多播放的聲景"
-        case .rankingsDetail: "大家都喜歡的聲音。"
         case .rankingsStillForming: "榜單還在形成，播放和收藏會讓真實聲景逐漸排出順序。"
         case .rankingsPlayAndSaveHelp: "播放和收藏會讓真實聲景逐漸排出順序。"
         case .rankingsNatureParks: "自然公園"

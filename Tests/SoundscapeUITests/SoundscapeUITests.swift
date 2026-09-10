@@ -123,6 +123,37 @@ final class SoundscapeUITests: XCTestCase {
         capture("Soundscape-Map-Loaded")
     }
 
+    func testRankingsAndMapUseDirectAlignedHeaders() {
+        let app = makeApp()
+        app.launch()
+
+        let rankings = app.buttons["explore-mode-rankings"]
+        XCTAssertTrue(rankings.waitForExistence(timeout: 8))
+        rankings.tap()
+        XCTAssertTrue(app.staticTexts["最多播放的声景"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.staticTexts["社区精选"].exists)
+        XCTAssertFalse(app.staticTexts["大家都喜欢的声音。"].exists)
+        capture("Soundscape-Rankings-Direct-Header")
+
+        let map = app.buttons["地图"]
+        XCTAssertTrue(map.waitForExistence(timeout: 3))
+        map.tap()
+        let mapTitle = app.staticTexts["声音落在地图上"]
+        XCTAssertTrue(mapTitle.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.staticTexts["声音地图"].exists)
+        XCTAssertFalse(app.staticTexts["每个黑点都是一段真实录音；选择地点即可查看作者并开始播放。"].exists)
+        capture("Soundscape-Map-Direct-Header")
+
+        let mapHeaderFrame = mapTitle.frame
+        let create = app.buttons["发布"]
+        XCTAssertTrue(create.waitForExistence(timeout: 3))
+        create.tap()
+        let createTitle = app.staticTexts["发布声景"]
+        XCTAssertTrue(createTitle.waitForExistence(timeout: 8))
+        XCTAssertEqual(mapHeaderFrame.minX, createTitle.frame.minX, accuracy: 1)
+        XCTAssertEqual(mapHeaderFrame.minY, createTitle.frame.minY, accuracy: 1)
+    }
+
     func testCapturesTurntableMetadataOnlyState() {
         let app = makeApp()
         app.launch()

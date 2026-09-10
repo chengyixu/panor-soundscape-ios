@@ -16,7 +16,7 @@ struct RankingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
-                    ScreenHeader(eyebrow: loc(.rankingsEyebrow), title: loc(.rankingsTitle), detail: loc(.rankingsDetail))
+                    ScreenHeader(title: loc(.rankingsTitle))
                     content
                 }
                 .padding(.horizontal, SoundscapeTheme.screenPadding)

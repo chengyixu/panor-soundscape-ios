@@ -20,17 +20,14 @@ struct DiscoveryMapView: View {
 
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                ScreenHeader(
-                    eyebrow: loc(.mapEyebrow),
-                    title: loc(.mapTitle),
-                    detail: loc(.mapDetail)
-                )
+                ScreenHeader(title: loc(.mapTitle))
                     .padding(.horizontal, SoundscapeTheme.screenPadding)
-                    .padding(.top, 12)
+                    .padding(.top, SoundscapeTheme.screenPadding)
                 content
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .soundscapeScreenBackground()
+            .toolbar(.hidden, for: .navigationBar)
             .task(id: isActive) {
                 guard isActive else { return }
                 await model.load(forceRefresh: true)
