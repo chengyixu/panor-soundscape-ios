@@ -2,6 +2,26 @@ import XCTest
 @testable import Soundscape
 
 final class APIClientContractTests: XCTestCase {
+    func testLoginSendsUsernameOrEmailIdentifierAndStoresReturnedToken() async throws {
+        let response = Data(#"{"success":true,"sessionId":"login-session","user":{"id":"u_7","name":"wilsonxu","email":"chengyi_xu@outlook.com","picture":null}}"#.utf8)
+        let transport = StubHTTPTransport(stubs: [.init(data: response, status: 200)])
+        let tokenStore = InMemoryTokenStore()
+        let client = APIClient(transport: transport, tokenStore: tokenStore)
+        let repository = PanorIdentityRepository(environment: .production, client: client, tokenStore: tokenStore)
+
+        let user = try await repository.login(credentials: LoginCredentials(identifier: "wilsonxu", password: "secret12"))
+
+        XCTAssertEqual(user.username, "wilsonxu")
+        let storedToken = try await tokenStore.token()
+        XCTAssertEqual(storedToken, "login-session")
+        let requests = await transport.requests
+        let request = try XCTUnwrap(requests.first)
+        XCTAssertEqual(request.url?.absoluteString, "https://www.panor.tech/api/auth/login")
+        let body = try XCTUnwrap(request.httpBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: String])
+        XCTAssertEqual(json, ["identifier": "wilsonxu", "password": "secret12"])
+    }
+
     func testRegistrationSendsRequiredEmailAndStoresReturnedToken() async throws {
         let response = Data(#"{"success":true,"sessionId":"registered-token","user":{"id":"u_72","name":"new-user","email":"new-user@example.com","picture":null}}"#.utf8)
         let transport = StubHTTPTransport(stubs: [.init(data: response, status: 200)])
@@ -156,7 +176,7 @@ final class APIClientContractTests: XCTestCase {
                 baseURL: APIEnvironment.production.authAPIBaseURL,
                 path: AuthAPIPath.login.rawValue,
                 method: "POST",
-                body: LoginCredentials(email: "wilson@example.com", password: "wrong")
+                body: LoginCredentials(identifier: "wilson@example.com", password: "wrong")
             )
             XCTFail("Expected authentication failure")
         } catch let error as AppError {

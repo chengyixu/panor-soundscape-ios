@@ -10,7 +10,7 @@ struct PanorUser: Codable, Equatable, Sendable, Identifiable {
 }
 
 struct LoginCredentials: Encodable, Equatable, Sendable {
-    let email: String
+    let identifier: String
     let password: String
 }
 

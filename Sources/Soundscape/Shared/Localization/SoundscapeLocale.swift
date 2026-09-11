@@ -152,6 +152,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case identityRegister
     case identityRegisterTitle
     case identityEmail
+    case identityUsernameOrEmail
     case identityUsername
     case identityPassword
     case identityLoginButton
@@ -260,6 +261,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case errorUsernameRequired
     case errorPasswordTooShort
     case errorEmailRequired
+    case errorUsernameOrEmailRequired
     case errorGeneric
 
     // MARK: - ForYou
@@ -459,6 +461,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .identityRegister: "注册"
         case .identityRegisterTitle: "注册"
         case .identityEmail: "邮箱"
+        case .identityUsernameOrEmail: "用户名或邮箱"
         case .identityUsername: "姓名（选填）"
         case .identityPassword: "密码"
         case .identityLoginButton: "登录"
@@ -563,6 +566,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .errorUsernameRequired: "请输入用户名。"
         case .errorPasswordTooShort: "密码至少需要 6 个字符。"
         case .errorEmailRequired: "请输入邮箱。"
+        case .errorUsernameOrEmailRequired: "请输入用户名或邮箱。"
         case .errorGeneric: "错误"
         case .forYouEyebrow: "私人塑造"
         case .forYouTitle: "从任何想法开始。"
@@ -748,6 +752,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .identityRegister: "Register"
         case .identityRegisterTitle: "Register"
         case .identityEmail: "Email"
+        case .identityUsernameOrEmail: "Username or email"
         case .identityUsername: "Name (optional)"
         case .identityPassword: "Password"
         case .identityLoginButton: "Log In"
@@ -852,6 +857,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .errorUsernameRequired: "Please enter a username."
         case .errorPasswordTooShort: "Password must be at least 6 characters."
         case .errorEmailRequired: "Please enter an email address."
+        case .errorUsernameOrEmailRequired: "Please enter a username or email address."
         case .errorGeneric: "Error"
         case .forYouEyebrow: "Private shaping"
         case .forYouTitle: "Start with anything."
@@ -1037,6 +1043,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .identityRegister: "註冊"
         case .identityRegisterTitle: "註冊"
         case .identityEmail: "電子郵件"
+        case .identityUsernameOrEmail: "使用者名稱或電子郵件"
         case .identityUsername: "姓名（選填）"
         case .identityPassword: "密碼"
         case .identityLoginButton: "登入"
@@ -1141,6 +1148,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .errorUsernameRequired: "請輸入使用者名稱。"
         case .errorPasswordTooShort: "密碼至少需要 6 個字元。"
         case .errorEmailRequired: "請輸入電子郵件。"
+        case .errorUsernameOrEmailRequired: "請輸入使用者名稱或電子郵件。"
         case .errorGeneric: "錯誤"
         case .forYouEyebrow: "私人塑造"
         case .forYouTitle: "從任何想法開始。"

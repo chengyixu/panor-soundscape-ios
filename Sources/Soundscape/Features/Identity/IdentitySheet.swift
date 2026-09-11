@@ -59,7 +59,7 @@ struct IdentitySheet: View {
                     }
 
                     VStack(alignment: .leading, spacing: 18) {
-                        emailField
+                        identifierField
                         if mode == .register {
                             field(title: loc(.identityUsername), text: $name, secure: false)
                         }
@@ -211,11 +211,14 @@ struct IdentitySheet: View {
         }
     }
 
-    private var emailField: some View {
-        SoundscapeField(title: loc(.identityEmail)) {
-            TextField(loc(.identityEmail), text: $email)
-                .textContentType(.emailAddress)
-                .keyboardType(.emailAddress)
+    private var identifierField: some View {
+        let isLogin = mode == .login
+        let title = isLogin ? loc(.identityUsernameOrEmail) : loc(.identityEmail)
+
+        return SoundscapeField(title: title) {
+            TextField(title, text: $email)
+                .textContentType(isLogin ? .username : .emailAddress)
+                .keyboardType(isLogin ? .default : .emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         }
@@ -236,9 +239,9 @@ struct IdentitySheet: View {
 
     private func submit() async {
         let normalizedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedEmail.isEmpty else {
-            error = .invalidRequest(loc(.errorEmailRequired))
+        let normalizedIdentifier = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedIdentifier.isEmpty else {
+            error = .invalidRequest(mode == .login ? loc(.errorUsernameOrEmailRequired) : loc(.errorEmailRequired))
             return
         }
         guard password.count >= 6 else {
@@ -249,11 +252,11 @@ struct IdentitySheet: View {
         defer { isSubmitting = false }
         do {
             switch mode {
-            case .login: try await session.login(email: normalizedEmail, password: password)
+            case .login: try await session.login(identifier: normalizedIdentifier, password: password)
             case .register:
                 try await session.register(
                     name: normalizedName.isEmpty ? nil : normalizedName,
-                    email: normalizedEmail,
+                    email: normalizedIdentifier,
                     password: password
                 )
             }

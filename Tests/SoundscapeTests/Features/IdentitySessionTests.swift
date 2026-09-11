@@ -20,7 +20,7 @@ final class IdentitySessionTests: XCTestCase {
         let repository = StubIdentityRepository()
         await repository.setLogoutResult(.failure(.transport("offline")))
         let session = IdentitySession(repository: repository)
-        try await session.login(email: "wilson@example.com", password: "secret")
+        try await session.login(identifier: "wilson", password: "secret")
 
         await session.logout()
 

@@ -202,7 +202,7 @@ final class SoundscapeUITests: XCTestCase {
         XCTAssertTrue(identityButton.waitForExistence(timeout: 8))
         identityButton.tap()
 
-        XCTAssertTrue(app.textFields["邮箱"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textFields["用户名或邮箱"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["google-signin"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["apple-signin"].waitForExistence(timeout: 3))
 

@@ -27,8 +27,8 @@ final class IdentitySession {
         }
     }
 
-    func login(email: String, password: String) async throws {
-        user = try await repository.login(credentials: LoginCredentials(email: email, password: password))
+    func login(identifier: String, password: String) async throws {
+        user = try await repository.login(credentials: LoginCredentials(identifier: identifier, password: password))
         error = nil
     }
 
