@@ -573,6 +573,9 @@ final class SoundscapeUITests: XCTestCase {
     }
 
     private func capture(_ name: String) {
+        // Screenshots are manual visual artifacts, not a CI assertion. Hosted
+        // simulator screenshot requests can time out after all UI checks pass.
+        guard ProcessInfo.processInfo.environment["SOUNDSCAPE_CAPTURE_SCREENSHOTS"] == "1" else { return }
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
