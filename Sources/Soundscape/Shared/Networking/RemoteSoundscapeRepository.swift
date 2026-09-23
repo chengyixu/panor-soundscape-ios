@@ -39,6 +39,15 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
         return rows.map { $0.domain(environment: environment) }
     }
 
+    func saved() async throws -> [Soundscape] {
+        let rows: [SoundscapeDTO] = try await client.request(
+            baseURL: environment.soundscapeAPIBaseURL,
+            path: SoundscapeAPIPath.savedSoundscapes.value,
+            authenticated: true
+        )
+        return rows.map { $0.domain(environment: environment) }
+    }
+
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape {
         var builder = MultipartBuilder()
         builder.addFile(name: "audio", file: draft.audio)

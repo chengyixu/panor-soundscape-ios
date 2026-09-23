@@ -16,6 +16,7 @@ protocol AudioPlaybackEngine: AnyObject {
     var onFailure: ((AppError) -> Void)? { get set }
 
     func load(url: URL) throws
+    func crossfade(to url: URL, duration: TimeInterval) throws
     func play() throws
     func restart() throws
     func pause()
@@ -48,19 +49,48 @@ final class SystemAudioPlaybackEngine: AudioPlaybackEngine {
     private var notificationObservers: [NSObjectProtocol] = []
     private var volumeTask: Task<Void, Never>?
     private var targetVolume: Float = 1
+    private var outgoingPlayer: AVPlayer?
+    private var crossfadeDuration: TimeInterval = 0
+    private var crossfadeTask: Task<Void, Never>?
+    private let makePlayer: (AVPlayerItem) -> AVPlayer
+
+    init(makePlayer: @escaping (AVPlayerItem) -> AVPlayer = { AVPlayer(playerItem: $0) }) {
+        self.makePlayer = makePlayer
+    }
 
     func load(url: URL) throws {
         stop()
+        configure(url: url)
+    }
+
+    func crossfade(to url: URL, duration: TimeInterval) throws {
+        // Retain audible output while the new stream buffers. Start the fade
+        // only once AVPlayer reports that the incoming stream is playing.
+        let audible = player?.timeControlStatus == .playing ? player : outgoingPlayer
+        if audible === outgoingPlayer { outgoingPlayer = nil }
+        detachObservers()
+        if player !== audible { player?.pause() }
+        outgoingPlayer?.pause()
+        crossfadeTask?.cancel()
+        crossfadeTask = nil
+        volumeTask?.cancel()
+        outgoingPlayer = audible
+        crossfadeDuration = duration
+        targetVolume = 1
+        configure(url: url)
+    }
+
+    private func configure(url: URL) {
         let item = AVPlayerItem(url: url)
-        let player = AVPlayer(playerItem: item)
-        player.volume = targetVolume
+        let player = makePlayer(item)
+        player.volume = outgoingPlayer == nil ? targetVolume : 0
         self.player = player
         trace("load url=\(url.absoluteString)")
         onStateChanged?(.loading)
 
         itemStatusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self, weak item] _, _ in
             Task { @MainActor [weak self, weak item] in
-                guard let self, let item else { return }
+                guard let self, let item, self.player?.currentItem === item else { return }
                 switch item.status {
                 case .unknown:
                     self.trace("item status=unknown")
@@ -78,7 +108,7 @@ final class SystemAudioPlaybackEngine: AudioPlaybackEngine {
 
         timeControlObservation = player.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self, weak player] _, _ in
             Task { @MainActor [weak self, weak player] in
-                guard let self, let player else { return }
+                guard let self, let player, self.player === player else { return }
                 switch player.timeControlStatus {
                 case .paused:
                     self.trace("timeControl=paused")
@@ -86,6 +116,7 @@ final class SystemAudioPlaybackEngine: AudioPlaybackEngine {
                     self.trace("timeControl=waiting reason=\(player.reasonForWaitingToPlay?.rawValue ?? "unknown")")
                     self.onStateChanged?(.loading)
                 case .playing:
+                    self.beginCrossfadeIfNeeded()
                     self.trace("timeControl=playing rate=\(player.rate)")
                     self.onStateChanged?(.playing)
                 @unknown default:
@@ -99,25 +130,34 @@ final class SystemAudioPlaybackEngine: AudioPlaybackEngine {
             let elapsed = time.seconds.isFinite ? max(0, time.seconds) : 0
             let rawDuration = item?.duration.seconds
             let duration = rawDuration?.isFinite == true ? rawDuration : nil
-            Task { @MainActor [weak self] in self?.onProgress?(elapsed, duration) }
+            Task { @MainActor [weak self, weak item] in
+                guard let self, let item, self.player?.currentItem === item else { return }
+                self.onProgress?(elapsed, duration)
+            }
         }
 
         notificationObservers.append(NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: item,
             queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.onEnded?() }
+        ) { [weak self, weak item] _ in
+            Task { @MainActor [weak self, weak item] in
+                guard let self, let item, self.player?.currentItem === item else { return }
+                self.onEnded?()
+            }
         })
 
         notificationObservers.append(NotificationCenter.default.addObserver(
             forName: AVPlayerItem.failedToPlayToEndTimeNotification,
             object: item,
             queue: .main
-        ) { [weak self] notification in
+        ) { [weak self, weak item] notification in
             let failure = notification.userInfo?["AVPlayerItemFailedToPlayToEndErrorKey"] as? Error
             let detail = failure.map { String(describing: type(of: $0)) } ?? "AVPlayerItem"
-            Task { @MainActor [weak self] in self?.onFailure?(.transport(detail)) }
+            Task { @MainActor [weak self, weak item] in
+                guard let self, let item, self.player?.currentItem === item else { return }
+                self.onFailure?(.transport(detail))
+            }
         })
     }
 
@@ -137,12 +177,29 @@ final class SystemAudioPlaybackEngine: AudioPlaybackEngine {
 
     func pause() {
         trace("pause requested")
+        crossfadeTask?.cancel()
+        crossfadeTask = nil
+        outgoingPlayer?.pause()
+        outgoingPlayer = nil
+        volumeTask?.cancel()
+        player?.volume = targetVolume
         player?.pause()
     }
 
     func stop() {
         volumeTask?.cancel()
         volumeTask = nil
+        crossfadeTask?.cancel()
+        crossfadeTask = nil
+        outgoingPlayer?.pause()
+        outgoingPlayer = nil
+        detachObservers()
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
+    }
+
+    private func detachObservers() {
         itemStatusObservation?.invalidate()
         itemStatusObservation = nil
         timeControlObservation?.invalidate()
@@ -151,14 +208,37 @@ final class SystemAudioPlaybackEngine: AudioPlaybackEngine {
         timeObserver = nil
         notificationObservers.forEach(NotificationCenter.default.removeObserver)
         notificationObservers.removeAll()
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
-        player = nil
+    }
+
+    private func beginCrossfadeIfNeeded() {
+        guard let incoming = player, let outgoing = outgoingPlayer, crossfadeTask == nil else { return }
+        let startVolume = outgoing.volume
+        let duration = max(0.01, crossfadeDuration)
+        crossfadeTask = Task { @MainActor [weak self] in
+            let start = ContinuousClock.now
+            while !Task.isCancelled {
+                guard let self else { outgoing.pause(); return }
+                let elapsed = start.duration(to: .now)
+                let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+                let t = Float(min(1, seconds / duration))
+                let eased = t * t * (3 - 2 * t)
+                outgoing.volume = startVolume * (1 - eased)
+                incoming.volume = self.targetVolume * eased
+                if t >= 1 {
+                    outgoing.pause()
+                    self.outgoingPlayer = nil
+                    self.crossfadeTask = nil
+                    return
+                }
+                do { try await Task.sleep(for: .milliseconds(8)) } catch { return }
+            }
+        }
     }
 
     func setVolume(_ volume: Float, duration: TimeInterval) {
         targetVolume = min(1, max(0, volume))
         volumeTask?.cancel()
+        guard crossfadeTask == nil, outgoingPlayer == nil else { return }
         guard let player else { return }
         let startVolume = player.volume
         let steps = max(1, Int(duration * 60))
@@ -278,10 +358,17 @@ final class AudioPlayerController {
         case paused
     }
 
+    enum PlaybackMode: String, CaseIterable, Equatable, Sendable {
+        case repeatOne
+        case continuous
+        case shuffle
+    }
+
     private(set) var current: Soundscape?
     private(set) var presentedSoundscape: Soundscape?
     private(set) var source: Source = .direct
     private(set) var phase: Phase = .idle
+    private(set) var playbackMode: PlaybackMode = .repeatOne
     private(set) var elapsedSeconds = 0
     private(set) var durationSeconds = 0
     private(set) var error: AppError?
@@ -302,6 +389,13 @@ final class AudioPlayerController {
     private(set) var recommendationStream: [Soundscape] = []
     private(set) var currentSequenceIndex: Int?
     private(set) var savedSoundscapeIDs: Set<Int> = []
+    private(set) var isBrowsing = false
+    private(set) var availableSoundscapes: [Soundscape] = []
+    var vinylStream: [Soundscape] {
+        var seen = Set<Int>()
+        return (availableSoundscapes + recommendationStream + [current].compactMap { $0 })
+            .filter { $0.audioURL != nil && seen.insert($0.id).inserted }
+    }
     private var recommendationContexts: [Int: RecommendationContext] = [:]
     private var recordedImpressionKeys: Set<String> = []
     private var completedRecommendationSoundscapeIDs: Set<Int> = []
@@ -380,6 +474,25 @@ final class AudioPlayerController {
         recordImpressions(for: [first.soundscape.id])
     }
 
+    func loadVinylCatalog() async throws {
+        availableSoundscapes = try await repository.explore(category: nil).filter { $0.audioURL != nil }
+    }
+
+    func commitNeedleSelection(_ candidate: Soundscape) async {
+        isBrowsing = false
+        if current?.id == candidate.id {
+            engine.setVolume(1, duration: 0.3)
+            if phase == .paused || phase == .idle { await resume() }
+            return
+        }
+        recordResonanceFeedback(ResonanceFeedback(kind: .advanced, listenedSeconds: elapsedSeconds))
+        recommendationStream = vinylStream
+        currentSequenceIndex = recommendationStream.firstIndex { $0.id == candidate.id }
+        presentedSoundscape = candidate
+        await play(candidate, crossfade: true)
+        recordImpressions(for: [candidate.id])
+    }
+
     func dismissPlayer(stopPlayback: Bool) {
         presentedSoundscape = nil
         if stopPlayback { stop() }
@@ -392,6 +505,10 @@ final class AudioPlayerController {
     func next() async {
         guard let nextIndex = nextCandidateIndex else { return }
         await selectCandidate(at: nextIndex)
+    }
+
+    func setPlaybackMode(_ mode: PlaybackMode) {
+        playbackMode = mode
     }
 
     func skipCurrent(reason: ResonanceFeedbackReason) async {
@@ -439,24 +556,40 @@ final class AudioPlayerController {
     }
 
     func setBrowsing(_ browsing: Bool) {
+        isBrowsing = browsing
         engine.setVolume(browsing ? 0.25 : 1, duration: 0.15)
+    }
+
+    func refreshSavedSoundscapes() async throws -> [Soundscape] {
+        let items = try await repository.saved()
+        savedSoundscapeIDs = Set(items.map(\.id))
+        return items
+    }
+
+    func clearSavedSoundscapes() {
+        savedSoundscapeIDs = []
+    }
+
+    @discardableResult
+    func toggleSaved(_ soundscape: Soundscape) async throws -> Bool {
+        let response = try await repository.toggleSave(id: soundscape.id)
+        if response.saved { savedSoundscapeIDs.insert(soundscape.id) }
+        else { savedSoundscapeIDs.remove(soundscape.id) }
+        if response.saved, current?.id == soundscape.id {
+            recordResonanceFeedback(ResonanceFeedback(
+                kind: .saved,
+                listenedSeconds: elapsedSeconds
+            ))
+        }
+        error = nil
+        return response.saved
     }
 
     @discardableResult
     func toggleSavedCurrent() async -> Bool? {
         guard let current else { return nil }
         do {
-            let response = try await repository.toggleSave(id: current.id)
-            if response.saved { savedSoundscapeIDs.insert(current.id) }
-            else { savedSoundscapeIDs.remove(current.id) }
-            if response.saved {
-                recordResonanceFeedback(ResonanceFeedback(
-                    kind: .saved,
-                    listenedSeconds: elapsedSeconds
-                ))
-            }
-            error = nil
-            return response.saved
+            return try await toggleSaved(current)
         } catch let appError as AppError {
             error = appError
         } catch let underlyingError {
@@ -465,7 +598,7 @@ final class AudioPlayerController {
         return nil
     }
 
-    func play(_ soundscape: Soundscape) async {
+    func play(_ soundscape: Soundscape, crossfade: Bool = false) async {
         guard let url = soundscape.audioURL else {
             current = soundscape
             error = .invalidRequest(loc(.errorNoAudio))
@@ -473,7 +606,7 @@ final class AudioPlayerController {
         }
 
         reportCurrentPlay()
-        engine.stop()
+        if !crossfade { engine.stop() }
         engineHasLoadedItem = false
         playbackRequested = true
         current = soundscape
@@ -493,7 +626,8 @@ final class AudioPlayerController {
                 if current == nil || !playbackRequested { deactivateSession() }
                 return
             }
-            try engine.load(url: url)
+            if crossfade { try engine.crossfade(to: url, duration: 0.3) }
+            else { try engine.load(url: url) }
             engineHasLoadedItem = true
             guard playbackRequested else {
                 engine.pause()
@@ -509,6 +643,8 @@ final class AudioPlayerController {
     }
 
     func pause() {
+        isBrowsing = false
+        engine.setVolume(1, duration: 0)
         guard current != nil, phase != .idle, phase != .paused else { return }
         playbackRequested = false
         if phase == .loading { playbackRequestGeneration += 1 }
@@ -519,6 +655,7 @@ final class AudioPlayerController {
     }
 
     func stop() {
+        isBrowsing = false
         playbackRequestGeneration += 1
         reportCurrentPlay()
         engine.stop()
@@ -613,6 +750,7 @@ final class AudioPlayerController {
     private func bindLifecycleEvents() {
         engine.onStateChanged = { [weak self] state in
             guard let self else { return }
+            guard self.playbackRequested else { return }
             switch state {
             case .loading: self.phase = .loading
             case .playing: self.phase = .playing
@@ -643,6 +781,18 @@ final class AudioPlayerController {
         reportCurrentPlay()
         elapsedSeconds = 0
         reportedThroughSeconds = 0
+
+        switch playbackMode {
+        case .repeatOne:
+            restartCurrentAfterCompletion()
+        case .continuous:
+            advanceAfterCompletion(shuffled: false)
+        case .shuffle:
+            advanceAfterCompletion(shuffled: true)
+        }
+    }
+
+    private func restartCurrentAfterCompletion() {
         phase = .loading
         do {
             try engine.restart()
@@ -652,6 +802,46 @@ final class AudioPlayerController {
         } catch let underlyingError {
             handlePlaybackFailure(.transport(String(describing: type(of: underlyingError))))
         }
+    }
+
+    private func advanceAfterCompletion(shuffled: Bool) {
+        let sequence = automaticPlaybackSequence
+        guard sequence.count > 1,
+              let current,
+              let currentIndex = sequence.firstIndex(where: { $0.id == current.id }) else {
+            restartCurrentAfterCompletion()
+            return
+        }
+
+        let candidate: Soundscape
+        if shuffled {
+            guard let randomCandidate = sequence.filter({ $0.id != current.id }).randomElement() else {
+                restartCurrentAfterCompletion()
+                return
+            }
+            candidate = randomCandidate
+        } else {
+            let nextIndex = sequence.index(after: currentIndex) == sequence.endIndex
+                ? sequence.startIndex
+                : sequence.index(after: currentIndex)
+            candidate = sequence[nextIndex]
+        }
+
+        recommendationStream = sequence
+        currentSequenceIndex = sequence.firstIndex(where: { $0.id == candidate.id })
+        presentedSoundscape = candidate
+        phase = .loading
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.play(candidate)
+            self.recordImpressions(for: [candidate.id])
+        }
+    }
+
+    private var automaticPlaybackSequence: [Soundscape] {
+        let preferred = recommendationStream.count > 1 ? recommendationStream : vinylStream
+        var seen = Set<Int>()
+        return preferred.filter { $0.audioURL != nil && seen.insert($0.id).inserted }
     }
 
     private func handlePlaybackFailure(_ playbackError: AppError) {
@@ -665,12 +855,9 @@ final class AudioPlayerController {
     }
 
     private func handleInterruptionBegan() {
-        shouldResumeAfterInterruption = isPlaying
-        guard isPlaying else { return }
-        playbackRequested = false
-        engine.pause()
-        phase = .paused
-        reportCurrentPlay()
+        guard playbackRequested else { return }
+        pause()
+        shouldResumeAfterInterruption = true
     }
 
     private func handleInterruptionEnded(shouldResume: Bool) {
@@ -682,12 +869,8 @@ final class AudioPlayerController {
     }
 
     private func handleOutputRouteLost() {
-        guard isPlaying else { return }
-        playbackRequested = false
-        engine.pause()
-        phase = .paused
-        shouldResumeAfterInterruption = false
-        reportCurrentPlay()
+        guard playbackRequested else { return }
+        pause()
         error = .invalidRequest(loc(.errorAudioDeviceDisconnected))
     }
 

@@ -142,7 +142,7 @@ navigation_gesture_body="$(sed -n '/private func screenTransitionGesture/,/priva
 if ! rg -q 'screenTransitionAnimation' Sources/Soundscape/App/RootTabView.swift || \
    ! rg -q 'simultaneousGesture\(screenTransitionGesture' Sources/Soundscape/App/RootTabView.swift || \
    ! printf '%s\n' "$navigation_gesture_body" | rg -q '\.onEnded' || \
-   printf '%s\n' "$navigation_gesture_body" | rg -q 'navigationDrag|PlayerPagingLayout|UIGestureRecognizerRepresentable|\.offset\(x:|\.onChanged|\.updating'; then
+   printf '%s\n' "$navigation_gesture_body" | rg -q 'navigationDrag|PlayerPagingLayout|UIGestureRecognizerRepresentable|\.offset\(x:|\.updating'; then
   fail 'player navigation must be a release-triggered full-screen fade with no interactive offset'
 else
   pass 'non-interactive full-screen player fade'
@@ -261,11 +261,25 @@ else
 fi
 
 if rg -q 'private struct VinylRecord' Sources/Soundscape/Features/Player/TurntablePlayerView.swift || \
-   ! rg -q 'VinylRecordArtwork\(isRotating: player\.isPlaying\)' Sources/Soundscape/Features/Player/TurntablePlayerView.swift || \
+   ! rg -q 'VinylRecordArtwork\(isRotating: player\.isPlaying' Sources/Soundscape/Features/Player/TurntablePlayerView.swift || \
    ! rg -q 'VinylRecordArtwork\(isRotating: player\.isPlaying\)' Sources/Soundscape/Shared/DesignSystem/VinylIndicatorButton.swift; then
   fail 'Player and floating control must share one vinyl artwork'
 else
   pass 'single shared vinyl artwork'
+fi
+
+if ! rg -q '\.highPriorityGesture\(' Sources/Soundscape/App/RootTabView.swift || \
+   ! rg -q 'VinylIndicatorLayout\.hitFrame\(' Sources/Soundscape/App/RootTabView.swift; then
+  fail 'floating vinyl drag must outrank its tap and be excluded from screen navigation'
+else
+  pass 'direct floating vinyl drag precedence'
+fi
+
+selection_overlay="$(sed -n '/private func trackList(/,/private func tonearm(/p' Sources/Soundscape/Features/Player/TurntablePlayerView.swift)"
+if printf '%s\n' "$selection_overlay" | rg -q 'Path \{ path in|addQuadCurve'; then
+  fail 'sound selection must not render a parenthesis-shaped guide line'
+else
+  pass 'sound selection has no parenthesis guide line'
 fi
 
 if rg -q 'exploreEyebrow|exploreDetail' Sources/Soundscape/Features/Explore/ExploreView.swift || \

@@ -95,7 +95,7 @@ final class TurntablePlayerTests: XCTestCase {
         )
     }
 
-    func testTonearmBrowsingMovesTheStylusAlongThePivotArcAndKeepsTheNeedleTangent() {
+    func testTonearmBrowsingFollowsTheRecordArcAndSpansTheVisibleSlots() {
         let size = CGSize(width: 390, height: 844)
         let recordDiameter: CGFloat = 498
         let recordTop: CGFloat = 101
@@ -114,14 +114,13 @@ final class TurntablePlayerTests: XCTestCase {
             browseOffset: 2
         )
 
-        let restingRadius = hypot(resting.headAnchor.x - resting.pivot.x, resting.headAnchor.y - resting.pivot.y)
-        let browsedRadius = hypot(browsed.headAnchor.x - browsed.pivot.x, browsed.headAnchor.y - browsed.pivot.y)
-        let radialAngle = atan2(browsed.headAnchor.y - browsed.pivot.y, browsed.headAnchor.x - browsed.pivot.x)
-
-        XCTAssertLessThan(browsed.headAnchor.y, resting.headAnchor.y)
-        XCTAssertLessThan(browsed.headAnchor.x, resting.headAnchor.x, "Browsing must follow the pivot arc instead of a vertical line")
-        XCTAssertEqual(browsedRadius, restingRadius, accuracy: 0.01)
-        XCTAssertEqual(browsed.headAngle, radialAngle + (.pi / 2), accuracy: 0.0001)
+        let center = CGPoint(x: recordDiameter * 0.26, y: recordTop + recordDiameter * 0.5)
+        XCTAssertEqual(resting.stylusTip.y - browsed.stylusTip.y, recordDiameter * 0.32, accuracy: 0.01)
+        for slot in -2...2 {
+            let geometry = TonearmAssemblyLayout.geometry(in: size, recordDiameter: recordDiameter,
+                recordTop: recordTop, parkProgress: 0, browseOffset: CGFloat(slot))
+            XCTAssertEqual(hypot(geometry.stylusTip.x - center.x, geometry.stylusTip.y - center.y), recordDiameter * 0.43, accuracy: 0.01)
+        }
     }
 
     func testPlayerAndExploreSwipesAreDirectionalAndAvoidTheTonearm() {
@@ -214,6 +213,65 @@ final class TurntablePlayerTests: XCTestCase {
 
         XCTAssertEqual(center.x + offset.width, 42, accuracy: 0.01)
         XCTAssertEqual(center.y + offset.height, 97, accuracy: 0.01)
+    }
+
+    func testFloatingVinylHitFrameTracksItsDraggedPosition() {
+        let size = CGSize(width: 390, height: 844)
+        let offset = CGSize(width: -120, height: -180)
+        let clamped = VinylIndicatorLayout.clampedOffset(
+            offset,
+            in: size,
+            safeAreaTop: 59,
+            safeAreaBottom: 34
+        )
+        let base = VinylIndicatorLayout.baseCenter(in: size, safeAreaBottom: 34)
+        let frame = VinylIndicatorLayout.hitFrame(
+            offset: offset,
+            in: size,
+            safeAreaTop: 59,
+            safeAreaBottom: 34
+        )
+
+        XCTAssertEqual(frame.midX, base.x + clamped.width, accuracy: 0.01)
+        XCTAssertEqual(frame.midY, base.y + clamped.height, accuracy: 0.01)
+        XCTAssertEqual(frame.width, 44, accuracy: 0.01)
+    }
+
+    func testFloatingVinylOnlyAppearsWhenAPlayerCanOpen() {
+        XCTAssertFalse(VinylIndicatorPresentation.shouldShow(
+            hasCurrentSoundscape: false,
+            isPlayerPresented: false
+        ))
+        XCTAssertFalse(VinylIndicatorPresentation.shouldShow(
+            hasCurrentSoundscape: true,
+            isPlayerPresented: true
+        ))
+        XCTAssertTrue(VinylIndicatorPresentation.shouldShow(
+            hasCurrentSoundscape: true,
+            isPlayerPresented: false
+        ))
+    }
+
+    func testFloatingVinylRequiresAnIntentionalDistanceBeforeStartingADrag() {
+        XCTAssertFalse(VinylIndicatorInteraction.isIntentionalDrag(CGSize(width: 6, height: 0)))
+        XCTAssertFalse(VinylIndicatorInteraction.isIntentionalDrag(CGSize(width: 8, height: 8)))
+        XCTAssertTrue(VinylIndicatorInteraction.isIntentionalDrag(CGSize(width: 14, height: 0)))
+    }
+
+    func testTallPhoneTurntableKeepsMetadataNearTheBottomWithoutOverlappingTheRecord() {
+        let size = CGSize(width: 480, height: 1_024)
+        let recordDiameter = TurntablePlayerLayout.recordDiameter(in: size)
+        let recordTop = TurntablePlayerLayout.recordTop(in: size, recordDiameter: recordDiameter)
+        let metadata = TurntablePlayerLayout.metadataFrame(
+            in: size,
+            recordTop: recordTop,
+            recordDiameter: recordDiameter
+        )
+
+        XCTAssertGreaterThan(recordTop, 180)
+        XCTAssertGreaterThanOrEqual(metadata.minY, recordTop + recordDiameter + TurntablePlayerLayout.metadataGap)
+        XCTAssertGreaterThan(metadata.maxY, size.height - 90)
+        XCTAssertLessThanOrEqual(metadata.maxY, size.height - TurntablePlayerLayout.metadataBottomInset)
     }
 
 }

@@ -2,13 +2,13 @@
 
 ## Product
 
-**SOUNDSCAPE** is an intent-first listening experience built around personalized, infinitely looping audio and a tactile full-screen turntable player. First-time users begin with unrestricted text, speech, environmental recording, or optional guided Q&A. Returning users enter an automatically playing algorithm-selected soundscape.
+**SOUNDSCAPE** is a listening experience built around infinitely looping audio and a tactile full-screen turntable player. Every cold launch opens the player with automatic playback. Private composition remains available in For You. The 2026-09-13 native interaction revision in `docs/product/experience.md` specifies direct needle dragging, ducked audio, release-to-play, circular edge-held browsing across the full catalog, and off-record parking.
 
 The canonical experience contract is `docs/product/experience.md`. It owns product-facing behavior, privacy, navigation, playback, save, share, and turntable interaction requirements. Runtime and implementation documents reference that contract rather than redefining it.
 
 The interaction contract applies to both native iOS and the web client. Native iOS is the reference client and first implementation priority; the web client mirrors the same product behavior wherever browser platform constraints permit.
 
-The executable uses the accepted five-surface shell: For You, Explore, Map, Contribute, and Me. Rankings is a mode inside Explore. `RootTabView` owns the single custom bottom-navigation renderer and the single full-screen turntable presentation; feature views may request playback but never present another player or navigation system. The player removes the shell completely, accepts a natural center-origin right swipe to Explore without stopping audio, and restores from Explore with a center-origin left swipe. Explicit `探索` and `唱片机` actions provide discoverable fallbacks without adding another navigation bar or mini player. For You owns first-use private composition and returning recommendation entry. Save/share, immutable offline snapshots, remote command-center controls, and full private-input retention remain separate implementation slices governed by the canonical contract.
+The executable uses the accepted five-surface shell: For You, Explore, Map, Contribute, and Me. Rankings is a mode inside Explore. `RootTabView` owns the single custom bottom-navigation renderer, the draggable small-vinyl return control, and the single full-screen turntable presentation; feature views may request playback but never present another player or navigation system. The player removes the shell completely, accepts a natural center-origin right swipe to Explore without stopping audio, and restores from Explore with a center-origin left swipe. The small vinyl follows the finger and keeps its position inside the safe content area. Me Favorites and Map/player hearts use the authenticated `/me/saved` collection as their shared state. For You owns first-use private composition and returning recommendation entry. Save/share, immutable offline snapshots, remote command-center controls, and full private-input retention remain separate implementation slices governed by the canonical contract.
 
 ## Resonance matching
 
@@ -71,13 +71,13 @@ As of July 22, 2026, the canonical Soundscape route is live publicly. The app fa
 - **Stylus** — The endpoint whose contact with the record determines whether the active soundscape is playing or paused.
 - **Paused Phase** — The exact loop position preserved while the stylus is outside the record.
 - **Record Rotation** — The continuous platter motion that persists independently of playback and never represents elapsed audio time.
-- **Browse Mode** — The temporary tonearm-drag state in which the active sound is softened and filtered while silent ready candidates appear on the record.
+- **Browse Mode** — The lifted-needle state in which playback is paused and vertical movement changes a silent pending selection. The current interaction contract is in `docs/product/experience.md`.
 - **Recommendation Stream** — The unbounded personalized sequence exposed through the tonearm without pages, a terminal item, or a fixed visible queue.
 - **Stable Stream Position** — A candidate's fixed identity and relative position after it first appears during the current listening session.
-- **Ready Window** — The five-item visible Recommendation Stream window whose audio and display metadata are fully available before interaction.
+- **Ready Window** — Up to five unique candidates with valid audio URLs; actual media loading is reported by the playback controller after lowering.
 - **Ready Edge** — The elastic interaction boundary at the end of currently audio-ready stream positions.
-- **Selection Detent** — A discrete candidate boundary that must be crossed before tonearm release can change the active soundscape.
-- **Cancel Zone** — The protected movement range around the current candidate in which release exits Browse Mode without changing soundscapes.
+- **Selection Detent** — A discrete candidate groove that changes only the pending selection; lowering the needle commits it.
+- **Cancel Zone** — Incidental movement below the gesture threshold; releasing a browse gesture never starts playback.
 - **Selection Transition** — The synchronized audio and visual handoff from the ducked active soundscape to a committed stream candidate.
 - **Tonearm Hit Area** — The invisible accessible touch envelope surrounding the full visible tonearm assembly.
 - **Pivot Arc** — The mechanically constrained path the tonearm follows around its fixed base while finger movement is projected onto that path.

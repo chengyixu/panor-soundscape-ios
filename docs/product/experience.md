@@ -93,6 +93,7 @@ When the user opens SOUNDSCAPE again, the app presents a soundscape selected for
 ### Playback Across Primary Surfaces
 
 - Moving from For You to Explore, Map, Contribute, or Me does not pause the active soundscape.
+- The small vinyl return control follows the finger directly anywhere within the safe content area. Its drag takes precedence over scrolling, map panning, and screen navigation; a tap opens the full player.
 - No compact player, Return Bar, or second playback toolbar appears above the tab bar.
 - Swiping right from the full-screen turntable reveals Explore without pausing or replacing the active soundscape.
 - Swiping left from Explore restores the same turntable soundscape, playback state, and Recommendation Stream position.
@@ -101,6 +102,7 @@ When the user opens SOUNDSCAPE again, the app presents a soundscape selected for
 ### Public Discovery Playback
 
 - Selecting a public soundscape from Explore, Map, or Rankings transitions into the single root-owned turntable player.
+- A selected Map sound exposes a Save heart without requiring playback first. It uses the same account-backed saved state as the player and Me.
 - The introductory source line identifies the public origin, such as **From Explore**, **From Map**, or **From Rankings**.
 - Public discovery never creates a second player or a competing playback session inside another primary surface.
 - Public discovery never introduces a compact player or alternate return surface.
@@ -129,56 +131,28 @@ When the user opens SOUNDSCAPE again, the app presents a soundscape selected for
 
 ## Turntable Player
 
-- The full-screen turntable is the complete listening experience; SOUNDSCAPE does not require or present a separate 3D world.
-- The record, tonearm, and stylus form the primary playback language rather than decorating conventional media controls.
-- The entire visible tonearm assembly is draggable through a continuous invisible hit area of at least 44 points, including its arm, head, and pivot regions.
-- The larger hit area adds no visible handle, knob, outline, or playback chrome.
-- The tonearm always rotates around its fixed base along a constrained Pivot Arc and never translates freely across the screen.
-- Finger movement is projected onto the Pivot Arc, so the user may drag naturally without tracing the exact curve.
-- While the stylus remains inside the record's Contact Boundary, tonearm movement controls Browse Mode.
-- Crossing outside the Contact Boundary enters Park Intent and stops candidate selection from advancing.
-- Releasing in Park Intent preserves the current soundscape selection and pauses it; candidates crossed while moving toward the parked position are never committed.
-- Moving the stylus back inside the Contact Boundary before release returns to Browse Mode.
-- The record rotates continuously while the turntable screen is active, including while the stylus is parked outside the record and playback is paused.
-- Record rotation never represents elapsed time, playback progress, or the preserved loop phase.
-- Stylus contact—not platter motion—is the sole foreground play or pause signal.
-- The active soundscape title and context-aware Source Line remain legible below the record.
-- A human-created public soundscape uses the creator name and may append a coarse place, such as **Wilson Xu · Mong Kok**.
-- A personalized algorithm-composed soundscape uses **Made for you** rather than assigning a fictional author.
-- A public discovery entry may identify its origin and creator, such as **From Explore · Alice**.
-- The foreground player has no progress bar, visible duration, or conventional previous, play/pause, next, shuffle, or repeat row.
-- Moving the stylus outside the record pauses the active soundscape at its exact loop phase.
-- Returning the stylus to the record resumes from that preserved phase rather than restarting.
-- The stylus's radial landing position never seeks within the soundscape.
-- Dragging the tonearm vertically while browsing reveals the candidate list directly over the record.
-- Touching the tonearm alone does not reveal or disturb the candidate list.
-- The candidate list begins appearing only after approximately 10–12 points of intentional on-record movement.
-- Once the Browse Reveal Threshold is crossed, the grooves transform into the Recommendation Stream over roughly 180 milliseconds.
-- Playback Metadata below the record fades out as the Recommendation Stream appears.
-- During Browse Mode, candidate information appears only within the on-record list and the lower metadata area remains empty.
-- The list is a moving viewport into an unbounded personalized Recommendation Stream rather than a fixed session queue or paginated menu.
-- The visible viewport contains at most five items: the active soundscape, two stable positions above it, and two stable positions below it.
-- Every visible candidate's audio and display metadata are fully ready before the candidate appears or becomes reachable by the tonearm.
-- Candidates beyond the visible Ready Window may remain metadata-only until they approach the window boundary.
-- If the Ready Window cannot replenish in time, the tonearm meets a subtle elastic Ready Edge with one restrained boundary haptic.
-- Unready candidates never appear, become selectable, or produce a loading state after release.
-- Releasing against the Ready Edge settles on the last audio-ready candidate while background replenishment continues.
-- The stream has no visible beginning, ending, page count, or total item count.
-- A candidate's identity and relative stream position become stable as soon as it first appears during the session.
-- Reversing the tonearm through the stream returns to the exact previously exposed candidates rather than regenerating replacements.
-- Replenishment happens only beyond the rolling local window; visible candidates never reorder or mutate beneath the gesture.
-- Entering Browse Mode ducks the active sound to roughly one quarter volume over about 150 milliseconds and applies a light low-pass treatment.
-- Candidates remain silent while the user moves through the list; Browse Mode never live-previews each candidate.
-- The current candidate has an approximately 20–24 point Cancel Zone that absorbs incidental tonearm movement.
-- Crossing each candidate Selection Detent produces one restrained haptic tick.
-- Releasing before any Selection Detent is crossed cancels Browse Mode and restores the active sound to full level over about 150 milliseconds.
-- Releasing the tonearm commits the highlighted candidate and begins the selected soundscape.
-- A committed candidate uses an approximately 650–750 millisecond equal-power crossfade from the ducked active soundscape into the selected soundscape.
-- During the same Selection Transition, the Recommendation Stream retracts into the grooves and the tonearm settles onto the committed detent.
-- After commitment, the Recommendation Stream retracts into the grooves and the selected soundscape's Playback Metadata fades in below the record.
-- Cancelling Browse Mode restores the original soundscape's Playback Metadata instead.
-- Every direct-manipulation gesture has an accessibility-action equivalent.
-- Rotation, transitions, and haptic feedback respect reduced-motion and system accessibility preferences.
+The native interaction contract was updated on 2026-09-13. This supersedes the earlier first-use gate: every cold launch opens the vinyl player and starts playback. Existing recommendation ranking is unchanged by this interaction revision.
+
+- Preserve the monochrome record, connected tonearm, persistent Back/Save actions, and the restrained metadata hierarchy below the record.
+- A compact playback-mode control sits beside the metadata rather than creating a conventional transport row. It uses familiar repeat and shuffle symbols, a native menu, and at least a 44-point hit target.
+- Playback modes are **Repeat One** (default, preserving Soundscape's continuous-loop behavior), **Continuous** (advance through the current stream and wrap), and **Shuffle** (choose a different item from the current stream whenever possible). Changing mode never interrupts the sound already playing.
+- Drag the needle directly to browse. The current recording continues at 25% volume while dragging; candidate recordings remain silent.
+- Release on the vinyl to commit the selected recording and restore normal volume. Switching recordings overlaps audio for 300ms once the incoming stream is playing. Releasing on the current recording preserves its playback position.
+- Move the needle right, off the vinyl, and release to pause and park. Drag it back onto the vinyl and release to resume.
+- There is no tap-to-lift or separate lower-to-play step. VoiceOver retains explicit play/pause actions.
+- The picker includes all available playable public recordings, regardless of the original entry sequence or saved favorites.
+- The visible window contains at most five unique playable recordings.
+- For up to five recordings, the current recording starts on the middle groove; other recordings are randomly assigned to the remaining grooves once and remain stable during browsing. Empty grooves do not duplicate tracks.
+- Longer queues start with the current recording centered. Holding the needle at the upper/lower boundary begins scrolling after 550ms and advances every 380ms while held, wrapping endlessly in either direction. Movement between the five slots never scrolls the window.
+- Edge scrolling stops on release, parking, lowering, leaving the player, or entering the background.
+- Browsing changes only the pending selection. Audio loading, failures, and playback status remain owned by the audio controller and are never reported as successful before output starts.
+- When lowered and actually playing, thin white arc segments rotate around a fine groove. They disappear when the needle is lifted or playback is paused; rotation is not a duration indicator.
+- The physical assembly interpolates its motion; reduced-motion disables continuous record movement and animated transitions.
+- Track rows can also be tapped. VoiceOver exposes lift, lower/play, park/pause, and adjustable selection actions.
+- Playback metadata remains below the record; while dragging, concise release and edge-hold guidance occupies that region.
+- Tapping playback metadata opens a dark translucent detail sheet at a compact detent. The sheet expands vertically, then scrolls, while preserving the visible vinyl context behind it.
+- The detail sheet presents the sound name, author, related location, duration, recording date, a short memo, and the suitability questionnaire with accessible high-contrast controls.
+- Sound-selection mode uses only the five individual track markers and labels; it does not draw a parenthesis-shaped guide line behind them.
 
 ### Input Acceptance
 
@@ -285,14 +259,14 @@ When the user opens SOUNDSCAPE again, the app presents a soundscape selected for
 - The active title and Source Line remain below the record throughout playback.
 - The five-item tab bar is hidden while the full-screen turntable is active.
 - Secondary details and actions remain visually subordinate to the record and tonearm.
-- Reference Chrome contains only a top-left Menu or Back action and a top-right Save heart.
+- Reference Chrome contains only a top-left Menu or Back action and a top-right Save heart. Playback mode remains a compact metadata-level control, not additional top chrome.
 - The Save heart reflects the active soundscape's saved state without becoming part of a transport-control row.
 - Tapping Playback Metadata opens a lightweight details sheet containing Share, **Why this soundscape?**, History, and other secondary actions.
 - No additional persistent playback toolbar appears when the details sheet is closed.
 - Recommendation reasoning is not displayed automatically.
 - A future **Why this soundscape?** detail may explain the recommendation when the user explicitly requests it.
-- A soundscape has no fixed ending or visible duration.
-- It loops continuously and can play forever until the user pauses it, moves to the next soundscape, or leaves the experience.
+- A soundscape has no visible duration in the primary player.
+- Repeat One is the default and can play the current sound forever. Continuous advances through and wraps the current stream; Shuffle chooses a different ready stream item whenever possible.
 - Playback continues when the user locks the device or switches to another app.
 - System media controls provide Pause, Resume, and Next while SOUNDSCAPE is in the background.
 - Foreground playback pauses when the user moves the stylus outside the record, a recording requires exclusive microphone capture, or the operating system interrupts the audio session.
@@ -316,7 +290,16 @@ When the user opens SOUNDSCAPE again, the app presents a soundscape selected for
 - Comments are not part of the current SOUNDSCAPE experience.
 - The current interface and implementation should not expose placeholder or disabled comment controls.
 
+## Profile Avatar
+
+- The Me profile avatar opens the system photo picker for a signed-in account; signed-out taps lead to sign-in.
+- The first sign-in on an installation chooses one of eight monochrome Soundscape symbols at random and persists that choice per account. Subsequent launches and account switches reuse the same symbol or chosen photo.
+- Selected photos are orientation-corrected, center-cropped to a 256-point square, encoded as bounded opaque JPEG, and written atomically before replacing the visible avatar. A failed or canceled selection leaves the prior avatar untouched.
+- The shared Panor auth service currently has no avatar-write API. Custom avatars and generated defaults are therefore stored **only on this device**, not uploaded or synced. The Me screen states this explicitly. Do not represent a local selection as a server account update.
+
 ## Saved Soundscapes
+
+- Me includes a Favorites subtab backed by the authenticated saved-soundscape collection. It lists sounds saved from Map or the player and supports playback and removal.
 
 - Saving preserves an immutable snapshot of the exact experience the user received.
 - The snapshot includes the audio composition, loop behavior, title, Source Line, and displayed context needed to replay that version.

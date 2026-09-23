@@ -19,6 +19,34 @@ final class LibraryViewModelTests: XCTestCase {
         XCTAssertNil(model.mutationError)
     }
 
+    func testLoadPublishesRecordingsAndServerBackedFavoritesIndependently() async {
+        let repository = StubSoundscapeRepository()
+        await repository.setMineResult(.success([TestFixtures.soundscape]))
+        await repository.setSavedResult(.success([TestFixtures.soundscapeWithoutCoordinate]))
+        let model = LibraryViewModel(repository: repository)
+
+        await model.load()
+
+        guard case .loaded(let recordings) = model.state else { return XCTFail("Expected recordings") }
+        guard case .loaded(let favorites) = model.favoriteState else { return XCTFail("Expected favorites") }
+        XCTAssertEqual(recordings, [TestFixtures.soundscape])
+        XCTAssertEqual(favorites, [TestFixtures.soundscapeWithoutCoordinate])
+    }
+
+    func testFavoriteFailureDoesNotHideOwnedRecordings() async {
+        let repository = StubSoundscapeRepository()
+        await repository.setMineResult(.success([TestFixtures.soundscape]))
+        await repository.setSavedResult(.failure(.transport("offline")))
+        let model = LibraryViewModel(repository: repository)
+
+        await model.load()
+
+        guard case .loaded(let recordings) = model.state else { return XCTFail("Expected recordings") }
+        XCTAssertEqual(recordings, [TestFixtures.soundscape])
+        guard case .failed(let error) = model.favoriteState else { return XCTFail("Expected favorite failure") }
+        XCTAssertEqual(error, .transport("offline"))
+    }
+
     func testDeleteFailureRemainsVisibleAndDoesNotFalseRefresh() async {
         let repository = StubSoundscapeRepository()
         await repository.setDeleteResult(.failure(.authenticationRequired))

@@ -119,6 +119,9 @@ final class SoundscapeUITests: XCTestCase {
         XCTAssertTrue(mapTab.waitForExistence(timeout: 3))
         mapTab.tap()
         XCTAssertTrue(app.staticTexts["已选录音"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "map-favorite-")
+        ).firstMatch.waitForExistence(timeout: 3))
         waitForVisualSettling(duration: 3)
         capture("Soundscape-Map-Loaded")
     }
@@ -198,7 +201,7 @@ final class SoundscapeUITests: XCTestCase {
         XCTAssertTrue(libraryTab.waitForExistence(timeout: 8))
         libraryTab.tap()
 
-        let identityButton = app.buttons["登录或注册"]
+        let identityButton = app.buttons["profile-avatar-sign-in"]
         XCTAssertTrue(identityButton.waitForExistence(timeout: 8))
         identityButton.tap()
 
@@ -221,8 +224,115 @@ final class SoundscapeUITests: XCTestCase {
 
         openTurntable(in: app)
         XCTAssertTrue(app.buttons["turntable-back"].waitForExistence(timeout: 3))
+        let metadata = app.buttons["turntable-metadata"]
+        XCTAssertTrue(metadata.waitForExistence(timeout: 3))
+        XCTAssertGreaterThan(
+            metadata.frame.maxY,
+            app.frame.maxY - 90,
+            "Player metadata must sit near the bottom safe area instead of leaving a dead lower panel."
+        )
         XCTAssertFalse(app.buttons["vinyl-player-indicator"].exists)
         capture("Soundscape-Turntable")
+    }
+
+    func testPlayerPlaybackModeMenuSwitchesBetweenStandardModes() {
+        let app = makeApp()
+        app.launch()
+        openTurntable(in: app)
+
+        let mode = app.buttons["playback-mode"]
+        XCTAssertTrue(mode.waitForExistence(timeout: 4))
+        XCTAssertGreaterThanOrEqual(mode.frame.height, 44)
+        XCTAssertTrue(mode.label.contains("单曲循环"))
+        mode.tap()
+
+        let continuous = app.buttons["持续播放"]
+        XCTAssertTrue(continuous.waitForExistence(timeout: 3))
+        continuous.tap()
+        XCTAssertTrue(mode.label.contains("持续播放"))
+
+        mode.tap()
+        let shuffle = app.buttons["随机播放"]
+        XCTAssertTrue(shuffle.waitForExistence(timeout: 3))
+        shuffle.tap()
+        XCTAssertTrue(mode.label.contains("随机播放"))
+        capture("Soundscape-Playback-Modes")
+    }
+
+    func testPlayerDetailsUseScrollableTranslucentInformationHierarchy() {
+        let app = makeApp()
+        app.launch()
+        openTurntable(in: app)
+
+        app.buttons["turntable-metadata"].tap()
+
+        XCTAssertTrue(app.buttons["player-details-done"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.descendants(matching: .any)["player-detail-author"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["player-detail-location"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["player-detail-duration"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["player-detail-date"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["player-detail-memo"].exists)
+        capture("Soundscape-Player-Details-Compact")
+
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["recommendation-resonates"].waitForExistence(timeout: 3))
+        capture("Soundscape-Player-Details-Expanded")
+        app.swipeDown()
+        XCTAssertTrue(app.buttons["player-details-done"].isHittable)
+    }
+
+    func testNeedleDragReleasePlaysWithoutAnExtraTap() {
+        let app = makeApp()
+        app.launch()
+        openTurntable(in: app)
+        let needle = app.otherElements["tonearm-control"].firstMatch
+        let control = needle.exists ? needle : app.buttons["tonearm-control"].firstMatch
+        XCTAssertTrue(control.waitForExistence(timeout: 5))
+        let start = control.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -65)))
+        XCTAssertNotEqual(control.value as? String, "唱片外，已暂停")
+        XCTAssertFalse(app.otherElements["tonearm-track-0"].exists)
+        let playing = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "唱针位于唱片上"),
+            object: app.buttons["turntable-metadata"]
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [playing], timeout: 30), .completed)
+        capture("Soundscape-Needle-Lowered")
+    }
+
+    func testNeedleEdgeDwellCommitsOnReleaseAndDragOffParks() {
+        let app = makeApp()
+        app.launch()
+        openTurntable(in: app)
+        let control = app.descendants(matching: .any).matching(identifier: "tonearm-control").firstMatch
+        let metadata = app.buttons["turntable-metadata"]
+        let initialLabel = metadata.label
+        let start = control.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 170)), withVelocity: .slow, thenHoldForDuration: 1.6)
+        XCTAssertNotEqual(metadata.label, initialLabel)
+        let releasedLabel = metadata.label
+        waitForVisualSettling(duration: 0.9)
+        XCTAssertEqual(metadata.label, releasedLabel, "Releasing the needle must cancel edge scrolling")
+        let parkStart = control.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.6))
+        parkStart.press(forDuration: 0.05, thenDragTo: parkStart.withOffset(CGVector(dx: 55, dy: 0)))
+        XCTAssertEqual(control.value as? String, "唱片外，已暂停")
+        capture("Soundscape-Needle-Parked")
+        let resumeStart = control.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        resumeStart.press(forDuration: 0.05, thenDragTo: resumeStart.withOffset(CGVector(dx: -85, dy: 0)))
+        XCTAssertNotEqual(control.value as? String, "唱片外，已暂停")
+    }
+
+    func testColdLaunchOpensVinylAndAutoplays() {
+        let app = makeApp()
+        app.launchEnvironment.removeValue(forKey: "SOUNDSCAPE_FORCE_FIRST_USE")
+        app.launch()
+        XCTAssertTrue(app.otherElements["turntable-player"].waitForExistence(timeout: 20))
+        let playing = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "唱针位于唱片上"),
+            object: app.buttons["turntable-metadata"]
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [playing], timeout: 30), .completed)
+        capture("Soundscape-Default-Vinyl")
     }
 
     func testTurntableTopLeadingBackButtonReturnsToThePreviousSurface() {
@@ -265,12 +375,14 @@ final class SoundscapeUITests: XCTestCase {
         XCTAssertTrue(miniVinyl.waitForExistence(timeout: 8))
         let initialFrame = miniVinyl.frame
         let start = miniVinyl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.54, dy: 0.66))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.52, dy: 0.57))
         start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0)
 
         XCTAssertTrue(miniVinyl.waitForExistence(timeout: 2))
+        XCTAssertLessThan(miniVinyl.frame.minX, initialFrame.minX)
         XCTAssertLessThan(miniVinyl.frame.minY, initialFrame.minY)
         XCTAssertFalse(app.otherElements["turntable-player"].isHittable)
+        capture("Soundscape-Mini-Vinyl-Moved")
     }
 
     func testPlayerSwipesBackToLastScreenAndRestoresFromEverySurface() {

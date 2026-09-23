@@ -7,7 +7,7 @@ final class IdentitySessionTests: XCTestCase {
         let repository = StubIdentityRepository()
         let user = PanorUser(id: "u_2", name: "wilson", email: "wilson@example.com", picture: nil)
         await repository.setCurrentUserResult(.success(user))
-        let session = IdentitySession(repository: repository)
+        let session = IdentitySession(repository: repository, avatarStore: InMemoryProfileAvatarStore())
 
         await session.restore()
 
@@ -19,7 +19,7 @@ final class IdentitySessionTests: XCTestCase {
     func testLogoutFailureKeepsUserAndSurfacesError() async throws {
         let repository = StubIdentityRepository()
         await repository.setLogoutResult(.failure(.transport("offline")))
-        let session = IdentitySession(repository: repository)
+        let session = IdentitySession(repository: repository, avatarStore: InMemoryProfileAvatarStore())
         try await session.login(identifier: "wilson", password: "secret")
 
         await session.logout()
@@ -30,7 +30,7 @@ final class IdentitySessionTests: XCTestCase {
 
     func testRegisterForwardsRequiredEmail() async throws {
         let repository = StubIdentityRepository()
-        let session = IdentitySession(repository: repository)
+        let session = IdentitySession(repository: repository, avatarStore: InMemoryProfileAvatarStore())
 
         try await session.register(name: "new-user", email: "new-user@example.com", password: "secret12")
 

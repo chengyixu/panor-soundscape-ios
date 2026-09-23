@@ -59,6 +59,7 @@ actor CachedSoundscapeRepository: SoundscapeRepository {
     }
 
     func mine() async throws -> [Soundscape] { try await upstream.mine() }
+    func saved() async throws -> [Soundscape] { try await upstream.saved() }
 
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape {
         let soundscape = try await upstream.create(draft)

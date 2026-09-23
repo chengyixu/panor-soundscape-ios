@@ -31,4 +31,4 @@ PY
 )}"
 destination="platform=iOS Simulator,id=$simulator_id"
 xcodebuild -project Soundscape.xcodeproj -scheme Soundscape -destination "$destination" clean build
-xcodebuild -project Soundscape.xcodeproj -scheme Soundscape -destination "$destination" test
+xcodebuild -project Soundscape.xcodeproj -scheme Soundscape -destination "$destination" -parallel-testing-enabled NO test

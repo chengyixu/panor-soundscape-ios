@@ -4,6 +4,7 @@ import Observation
 @Observable
 final class LibraryViewModel {
     private(set) var state: LoadState<[Soundscape]> = .idle
+    private(set) var favoriteState: LoadState<[Soundscape]> = .idle
     private(set) var mutationError: AppError?
     private let repository: any SoundscapeRepository
     private var loadGeneration = 0
@@ -14,16 +15,37 @@ final class LibraryViewModel {
         loadGeneration += 1
         let generation = loadGeneration
         state = .loading
+        favoriteState = .loading
+        async let recordings = loadRecordings()
+        async let favorites = loadFavorites()
+        let (recordingResult, favoriteResult) = await (recordings, favorites)
+        guard generation == loadGeneration else { return }
+        state = recordingResult.loadState
+        favoriteState = favoriteResult.loadState
+    }
+
+    func reloadFavorites() async {
+        favoriteState = .loading
+        favoriteState = await loadFavorites().loadState
+    }
+
+    private func loadRecordings() async -> Result<[Soundscape], AppError> {
         do {
-            let items = try await repository.mine()
-            guard generation == loadGeneration else { return }
-            state = .loaded(items)
+            return .success(try await repository.mine())
         } catch let error as AppError {
-            guard generation == loadGeneration else { return }
-            state = .failed(error)
+            return .failure(error)
         } catch {
-            guard generation == loadGeneration else { return }
-            state = .failed(.transport(String(describing: type(of: error))))
+            return .failure(.transport(String(describing: type(of: error))))
+        }
+    }
+
+    private func loadFavorites() async -> Result<[Soundscape], AppError> {
+        do {
+            return .success(try await repository.saved())
+        } catch let error as AppError {
+            return .failure(error)
+        } catch {
+            return .failure(.transport(String(describing: type(of: error))))
         }
     }
 
@@ -52,3 +74,11 @@ final class LibraryViewModel {
     }
 }
 
+private extension Result where Success == [Soundscape], Failure == AppError {
+    var loadState: LoadState<[Soundscape]> {
+        switch self {
+        case .success(let items): .loaded(items)
+        case .failure(let error): .failed(error)
+        }
+    }
+}

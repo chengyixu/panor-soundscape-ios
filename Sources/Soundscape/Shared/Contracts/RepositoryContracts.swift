@@ -4,6 +4,7 @@ protocol SoundscapeRepository: Sendable {
     func explore(category: String?, policy: RepositoryReadPolicy) async throws -> [Soundscape]
     func rankings(policy: RepositoryReadPolicy) async throws -> [RankingLane]
     func mine() async throws -> [Soundscape]
+    func saved() async throws -> [Soundscape]
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape
     func suggestTitle(_ request: TitleSuggestionRequest) async throws -> TitleSuggestion
     func suggestCover(_ request: CoverSuggestionRequest) async throws -> CoverSuggestion

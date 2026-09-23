@@ -1,9 +1,11 @@
 import SwiftUI
+import PhotosUI
 
 enum LibraryFilter: String, CaseIterable, Identifiable {
     case recordings = "Recordings" // rawValue kept as key
     case publicItems = "Public" // rawValue kept as key
     case privateItems = "Private" // rawValue kept as key
+    case favorites = "Favorites" // rawValue kept as key
 
     var id: String { rawValue }
     
@@ -12,7 +14,55 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
         case .recordings: loc(.libraryFilterRecordings)
         case .publicItems: loc(.libraryFilterPublic)
         case .privateItems: loc(.libraryFilterPrivate)
+        case .favorites: loc(.librarySaved)
         }
+    }
+}
+
+struct LibraryFilterLayout: Layout {
+    static let spacing: CGFloat = 8
+
+    static func itemWidth(availableWidth: CGFloat, itemCount: Int = LibraryFilter.allCases.count) -> CGFloat {
+        guard itemCount > 0 else { return 0 }
+        return max(0, (availableWidth - spacing * CGFloat(itemCount - 1)) / CGFloat(itemCount))
+    }
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let width = proposedWidth(proposal: proposal, subviews: subviews)
+        let itemWidth = Self.itemWidth(availableWidth: width, itemCount: subviews.count)
+        let height = subviews.map {
+            $0.sizeThatFits(ProposedViewSize(width: itemWidth, height: proposal.height)).height
+        }.max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let itemWidth = Self.itemWidth(availableWidth: bounds.width, itemCount: subviews.count)
+        for (index, subview) in subviews.enumerated() {
+            let x = bounds.minX + CGFloat(index) * (itemWidth + Self.spacing)
+            subview.place(
+                at: CGPoint(x: x, y: bounds.midY),
+                anchor: .leading,
+                proposal: ProposedViewSize(width: itemWidth, height: bounds.height)
+            )
+        }
+    }
+
+    private func proposedWidth(proposal: ProposedViewSize, subviews: Subviews) -> CGFloat {
+        if let width = proposal.width { return width }
+        let intrinsicWidth = subviews.reduce(CGFloat.zero) { partialResult, subview in
+            partialResult + subview.sizeThatFits(.unspecified).width
+        }
+        return intrinsicWidth + Self.spacing * CGFloat(max(0, subviews.count - 1))
     }
 }
 
@@ -25,10 +75,16 @@ struct LibraryView: View {
     let player: AudioPlayerController
     let matching: any ResonanceMatching
     let intentParser: any ResonanceIntentParsing
+    let isActive: Bool
     @State private var showsIdentity = false
     @State private var showsSettings = false
     @State private var pendingDelete: Soundscape?
     @State private var filter: LibraryFilter = .recordings
+    @State private var favoriteActionError: AppError?
+    @State private var selectedAvatarPhoto: PhotosPickerItem?
+    @State private var isShowingAvatarPicker = false
+    @State private var avatarActionError: AppError?
+    @State private var isSavingAvatar = false
 
     init(
         repository: any SoundscapeRepository,
@@ -36,7 +92,8 @@ struct LibraryView: View {
         session: IdentitySession,
         player: AudioPlayerController,
         matching: any ResonanceMatching,
-        intentParser: any ResonanceIntentParsing
+        intentParser: any ResonanceIntentParsing,
+        isActive: Bool
     ) {
         _model = State(initialValue: LibraryViewModel(repository: repository))
         self.repository = repository
@@ -45,6 +102,7 @@ struct LibraryView: View {
         self.player = player
         self.matching = matching
         self.intentParser = intentParser
+        self.isActive = isActive
     }
 
     var body: some View {
@@ -66,10 +124,22 @@ struct LibraryView: View {
             }
             .soundscapeScreenBackground()
             .refreshable { if session.user != nil { await model.load() } }
-            .task(id: session.user?.id) {
-                if session.user != nil { await model.load() }
+            .task(id: "\(session.user?.id ?? "signed-out"):\(isActive)") {
+                if session.user != nil, isActive { await model.load() }
             }
             .sheet(isPresented: $showsIdentity) { IdentitySheet(session: session) }
+            .onChange(of: selectedAvatarPhoto) { _, selection in
+                guard let selection else { return }
+                Task { await updateAvatar(from: selection) }
+            }
+            .alert(loc(.libraryAvatarUploadFailed), isPresented: Binding(
+                get: { avatarActionError != nil || session.avatarError != nil },
+                set: { if !$0 { avatarActionError = nil; session.dismissAvatarError() } }
+            )) {
+                Button(loc(.generalOK)) { avatarActionError = nil; session.dismissAvatarError() }
+            } message: {
+                Text((avatarActionError ?? session.avatarError)?.userMessage ?? loc(.errorTryAgain))
+            }
             .sheet(isPresented: $showsSettings) {
                 SettingsView(
                     recorder: recorder,
@@ -88,6 +158,14 @@ struct LibraryView: View {
                 }
                 Button(loc(.generalCancel), role: .cancel) { pendingDelete = nil }
             }
+            .alert(loc(.librarySaved), isPresented: Binding(
+                get: { favoriteActionError != nil },
+                set: { if !$0 { favoriteActionError = nil } }
+            )) {
+                Button(loc(.generalOK)) { favoriteActionError = nil }
+            } message: {
+                Text(favoriteActionError?.userMessage ?? loc(.errorTryAgain))
+            }
         }
         .environment(\.locale, Locale(identifier: locale.rawValue))
     }
@@ -103,6 +181,11 @@ struct LibraryView: View {
                 Text(session.user == nil ? loc(.libraryPrivateUntilSignIn) : loc(.librarySoundRecorder))
                     .font(.subheadline)
                     .foregroundStyle(SoundscapeTheme.secondaryInk)
+                if session.user != nil {
+                    Text(loc(.libraryAvatarLocalOnly))
+                        .font(.caption2)
+                        .foregroundStyle(SoundscapeTheme.secondaryInk)
+                }
             }
             Spacer()
             Button {
@@ -119,28 +202,73 @@ struct LibraryView: View {
     }
 
     @ViewBuilder private var profileIdentityControl: some View {
-        profileAvatar
-            .onTapGesture {
-                if session.user != nil {
-                    showsSettings = true
-                }
-            }
+        if session.user != nil {
+            Button { isShowingAvatarPicker = true } label: { profileAvatar }
+            .buttonStyle(.plain)
+            .photosPicker(isPresented: $isShowingAvatarPicker, selection: $selectedAvatarPhoto, matching: .images)
+            .disabled(isSavingAvatar)
+            .accessibilityLabel(loc(.libraryChangeAvatar))
+            .accessibilityHint(loc(.libraryAvatarLocalOnly))
+            .accessibilityIdentifier("profile-avatar-picker")
+        } else {
+            Button { showsIdentity = true } label: { profileAvatar }
+                .buttonStyle(.plain)
+                .accessibilityLabel(loc(.librarySignInOrRegister))
+                .accessibilityIdentifier("profile-avatar-sign-in")
+        }
     }
 
-
     private var profileAvatar: some View {
-        Circle()
-            .fill(SoundscapeTheme.paperDeep)
-            .frame(width: 68, height: 68)
-            .overlay {
+        ZStack {
+            Circle().fill(SoundscapeTheme.paperDeep)
+            if let avatar = session.avatar {
+                switch avatar {
+                case .photo(let data):
+                    if let image = UIImage(data: data) {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    }
+                case .generated(let index):
+                    Image(systemName: Self.avatarSymbols[index % Self.avatarSymbols.count])
+                        .font(.system(size: 29, weight: .medium))
+                        .foregroundStyle(SoundscapeTheme.ink)
+                }
+            } else {
                 Image(systemName: "person.fill")
                     .font(.system(size: 28, weight: .light))
                     .foregroundStyle(SoundscapeTheme.secondaryInk)
             }
+            if isSavingAvatar { ProgressView().tint(SoundscapeTheme.ink) }
+        }
+        .frame(width: 68, height: 68)
+        .clipShape(Circle())
+        .overlay { Circle().stroke(SoundscapeTheme.line, lineWidth: 1) }
+        .accessibilityHidden(true)
+    }
+
+    private static let avatarSymbols = [
+        "waveform", "leaf", "drop", "sparkle", "mountain.2", "moon.stars", "sun.max", "wind"
+    ]
+
+    private func updateAvatar(from selection: PhotosPickerItem) async {
+        guard let userID = session.user?.id else { return }
+        isSavingAvatar = true
+        defer { isSavingAvatar = false; selectedAvatarPhoto = nil }
+        do {
+            guard let data = try await selection.loadTransferable(type: Data.self) else {
+                throw AppError.invalidRequest(loc(.errorInvalidImage))
+            }
+            guard session.user?.id == userID else { return }
+            let photo = try ProfileAvatarImageProcessor.normalizedJPEG(from: data)
+            try await session.setAvatarPhoto(photo, for: userID)
+        } catch let error as AppError {
+            avatarActionError = error
+        } catch {
+            avatarActionError = .invalidRequest(loc(.errorCannotProcessImage))
+        }
     }
 
     private var filterTabs: some View {
-        HStack(spacing: 28) {
+        LibraryFilterLayout {
             ForEach(LibraryFilter.allCases) { option in
                 Button {
                     filter = option
@@ -156,7 +284,6 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
             }
-            Spacer(minLength: 0)
         }
         .overlay(alignment: .bottom) {
             Rectangle().fill(SoundscapeTheme.line.opacity(0.7)).frame(height: 0.75)
@@ -171,6 +298,14 @@ struct LibraryView: View {
     }
 
     @ViewBuilder private var content: some View {
+        if filter == .favorites {
+            favoriteContent
+        } else {
+            recordingContent
+        }
+    }
+
+    @ViewBuilder private var recordingContent: some View {
         switch model.state {
         case .idle, .loading:
             SoundscapeLoadingState(title: loc(.libraryReadingRecordings))
@@ -211,13 +346,86 @@ struct LibraryView: View {
         }
     }
 
+    @ViewBuilder private var favoriteContent: some View {
+        switch model.favoriteState {
+        case .idle, .loading:
+            SoundscapeLoadingState(title: loc(.libraryReadingRecordings))
+        case .failed(let error):
+            ErrorStateView(error: error) { Task { await model.reloadFavorites() } }
+        case .loaded(let items) where items.isEmpty:
+            EmptyStateView(title: loc(.librarySaved), detail: loc(.librarySavedEmpty), systemImage: "heart")
+        case .loaded(let items):
+            VStack(alignment: .leading, spacing: 0) {
+                SoundscapeSectionHeader(title: loc(.librarySaved), trailing: "\(items.count)")
+                    .padding(.bottom, 8)
+                ForEach(items) { item in
+                    FavoriteSoundscapeRow(
+                        item: item,
+                        play: { Task { await player.openPlayer(item, sequence: items, source: .library) } },
+                        remove: {
+                            Task {
+                                do {
+                                    _ = try await player.toggleSaved(item)
+                                    await model.reloadFavorites()
+                                } catch let error as AppError {
+                                    favoriteActionError = error
+                                } catch {
+                                    favoriteActionError = .transport(String(describing: type(of: error)))
+                                }
+                            }
+                        }
+                    )
+                    if item.id != items.last?.id {
+                        Divider().overlay(SoundscapeTheme.line.opacity(0.65))
+                    }
+                }
+            }
+        }
+    }
+
     private func filtered(_ items: [Soundscape]) -> [Soundscape] {
         switch filter {
         case .recordings: items
         case .publicItems: items.filter(\.isPublic)
         case .privateItems: items.filter { !$0.isPublic }
+        case .favorites: []
         }
     }
+
+private struct FavoriteSoundscapeRow: View {
+    let item: Soundscape
+    let play: () -> Void
+    let remove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI)
+                .frame(width: 70, height: 70)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.displayTitle).font(.headline).lineLimit(1)
+                Text(item.authorDisplay).font(.subheadline).foregroundStyle(SoundscapeTheme.secondaryInk).lineLimit(1)
+                Text("\(item.locationDisplay)  ·  \(item.durationDisplay)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(SoundscapeTheme.secondaryInk)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: remove) {
+                Image(systemName: "heart.fill").frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(loc(.playerUnsave))
+            Button(action: play) {
+                Image(systemName: "play").frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(loc(.libraryPlayFeaturedRecording)) \(item.displayTitle)")
+        }
+        .foregroundStyle(SoundscapeTheme.ink)
+        .padding(.vertical, 12)
+    }
+}
 
 private struct LibraryHero: View {
     @Environment(LocaleManager.self) private var localeManager

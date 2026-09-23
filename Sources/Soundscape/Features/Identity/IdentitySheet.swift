@@ -158,11 +158,12 @@ struct IdentitySheet: View {
             withPresenting: rootViewController
         ) { result, signInError in
             if let signInError {
-                self.error = .transport(signInError.localizedDescription)
+                let message = signInError.localizedDescription
+                Task { @MainActor in self.error = .transport(message) }
                 return
             }
             guard let idToken = result?.user.idToken?.tokenString else {
-                self.error = .invalidRequest(loc(.errorServerDataUnrecognized))
+                Task { @MainActor in self.error = .invalidRequest(loc(.errorServerDataUnrecognized)) }
                 return
             }
             Task { @MainActor in

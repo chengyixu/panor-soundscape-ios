@@ -14,13 +14,15 @@ struct RootTabView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(LocaleManager.self) private var localeManager
     let container: AppContainer
-    @AppStorage("soundscape.for-you.has-opened") private var hasOpenedBefore = false
     @State private var selection: AppShellTab = .explore
     @State private var hasHandledForYouLaunch = false
     @State private var hasNavigatedSinceLaunch = false
     @State private var automaticLaunchError: AppError?
+    @State private var savedSyncError: AppError?
+    @State private var isLaunchingPlayer = true
     @State private var vinylDragOffset = CGSize.zero
     @State private var vinylDragStartOffset: CGSize?
+    @State private var navigationStartedOnNeedle: Bool?
 
     var body: some View {
         let locale = localeManager.current
@@ -33,7 +35,11 @@ struct RootTabView: View {
                     .opacity(playerPresented ? 0 : 1)
                     .allowsHitTesting(!playerPresented)
                     .accessibilityHidden(playerPresented)
-                    .simultaneousGesture(screenTransitionGesture(width: proxy.size.width))
+                    .simultaneousGesture(screenTransitionGesture(
+                        size: proxy.size,
+                        safeAreaTop: proxy.safeAreaInsets.top,
+                        safeAreaBottom: proxy.safeAreaInsets.bottom
+                    ))
 
                 if let soundscape = container.player.presentedSoundscape ?? container.player.current {
                     TurntablePlayerView(
@@ -44,14 +50,33 @@ struct RootTabView: View {
                     .opacity(playerPresented ? 1 : 0)
                     .allowsHitTesting(playerPresented)
                     .accessibilityHidden(!playerPresented)
-                    .simultaneousGesture(screenTransitionGesture(width: proxy.size.width))
+                    .simultaneousGesture(screenTransitionGesture(
+                        size: proxy.size,
+                        safeAreaTop: proxy.safeAreaInsets.top,
+                        safeAreaBottom: proxy.safeAreaInsets.bottom
+                    ))
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .contentShape(Rectangle())
             .animation(screenTransitionAnimation, value: playerPresented)
+            .overlay {
+                if isLaunchingPlayer && !playerPresented {
+                    ZStack {
+                        SoundscapeTheme.playerBackground.ignoresSafeArea()
+                        VStack(spacing: 24) {
+                            VinylRecordArtwork(isRotating: false)
+                                .frame(width: 240, height: 240)
+                            Text(loc(.playerLoading)).foregroundStyle(.white.opacity(0.75))
+                        }
+                    }
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
-                if !playerPresented {
+                if VinylIndicatorPresentation.shouldShow(
+                    hasCurrentSoundscape: container.player.current != nil,
+                    isPlayerPresented: playerPresented
+                ) {
                     let vinylOffset = VinylIndicatorLayout.clampedOffset(
                         vinylDragOffset,
                         in: proxy.size,
@@ -66,7 +91,7 @@ struct RootTabView: View {
                         .transaction { transaction in
                             transaction.animation = nil
                         }
-                        .gesture(
+                        .highPriorityGesture(
                             vinylDragGesture(
                                 in: proxy.size,
                                 safeAreaTop: proxy.safeAreaInsets.top,
@@ -80,6 +105,19 @@ struct RootTabView: View {
         .environment(\.locale, Locale(identifier: locale.rawValue))
         .preferredColorScheme(container.player.presentedSoundscape == nil ? .light : .dark)
         .task { await handleAutomaticLaunch() }
+        .task(id: container.session.user?.id) {
+            guard container.session.user != nil else {
+                container.player.clearSavedSoundscapes()
+                return
+            }
+            do {
+                _ = try await container.player.refreshSavedSoundscapes()
+            } catch let error as AppError {
+                savedSyncError = error
+            } catch {
+                savedSyncError = .transport(String(describing: type(of: error)))
+            }
+        }
         .onChange(of: selection) { previous, current in
             if previous != current { hasNavigatedSinceLaunch = true }
         }
@@ -90,6 +128,14 @@ struct RootTabView: View {
             Button(loc(.generalOK)) { automaticLaunchError = nil }
         } message: {
             Text(automaticLaunchError?.userMessage ?? loc(.errorTryAgain))
+        }
+        .alert(loc(.librarySaved), isPresented: Binding(
+            get: { savedSyncError != nil },
+            set: { if !$0 { savedSyncError = nil } }
+        )) {
+            Button(loc(.generalOK)) { savedSyncError = nil }
+        } message: {
+            Text(savedSyncError?.userMessage ?? loc(.errorTryAgain))
         }
     }
 
@@ -124,7 +170,8 @@ struct RootTabView: View {
                     session: container.session,
                     player: container.player,
                     matching: container.matching,
-                    intentParser: container.intentParser
+                    intentParser: container.intentParser,
+                    isActive: selection == .me
                 )
             }
         }
@@ -146,22 +193,43 @@ struct RootTabView: View {
             .zIndex(selection == tab ? 1 : 0)
     }
 
-    private func screenTransitionGesture(width: CGFloat) -> some Gesture {
+    private func screenTransitionGesture(
+        size: CGSize,
+        safeAreaTop: CGFloat,
+        safeAreaBottom: CGFloat
+    ) -> some Gesture {
         DragGesture(minimumDistance: 18)
+            .onChanged { _ in
+                if navigationStartedOnNeedle == nil {
+                    navigationStartedOnNeedle = container.player.isBrowsing
+                }
+            }
             .onEnded { value in
+                let wasNeedleDrag = navigationStartedOnNeedle == true
+                navigationStartedOnNeedle = nil
+                guard !wasNeedleDrag else { return }
                 guard container.player.current != nil else { return }
                 let playerPresented = container.player.presentedSoundscape != nil
+                if !playerPresented,
+                   VinylIndicatorLayout.hitFrame(
+                    offset: vinylDragOffset,
+                    in: size,
+                    safeAreaTop: safeAreaTop,
+                    safeAreaBottom: safeAreaBottom
+                   ).contains(value.startLocation) {
+                    return
+                }
 
                 if playerPresented, TurntableNavigationGesture.shouldDismissPlayer(
                     translation: value.translation,
                     startX: value.startLocation.x,
-                    width: width
+                    width: size.width
                 ) {
                     container.player.dismissPlayer(stopPlayback: false)
                 } else if !playerPresented, TurntableNavigationGesture.shouldPresentPlayer(
                     translation: value.translation,
                     startX: value.startLocation.x,
-                    width: width,
+                    width: size.width,
                     requiresLeadingEdge: selection == .map
                 ) {
                     container.player.presentCurrentPlayer()
@@ -174,7 +242,7 @@ struct RootTabView: View {
         safeAreaTop: CGFloat,
         safeAreaBottom: CGFloat
     ) -> some Gesture {
-        DragGesture(minimumDistance: 5)
+        DragGesture(minimumDistance: 0)
             .onChanged { value in
                 let startOffset = vinylDragStartOffset ?? vinylDragOffset
                 let nextOffset = clampedVinylOffset(
@@ -193,6 +261,7 @@ struct RootTabView: View {
                 }
             }
             .onEnded { value in
+                let intentionalDrag = VinylIndicatorInteraction.isIntentionalDrag(value.translation)
                 let startOffset = vinylDragStartOffset ?? vinylDragOffset
                 let finalOffset = clampedVinylOffset(
                     startOffset: startOffset,
@@ -203,9 +272,10 @@ struct RootTabView: View {
                 )
 
                 withoutAnimation {
-                    vinylDragOffset = finalOffset
+                    if intentionalDrag { vinylDragOffset = finalOffset }
                     vinylDragStartOffset = nil
                 }
+                if !intentionalDrag { restorePlayer() }
             }
     }
 
@@ -245,12 +315,12 @@ struct RootTabView: View {
     private func handleAutomaticLaunch() async {
         guard !hasHandledForYouLaunch else { return }
         hasHandledForYouLaunch = true
-
+        defer { isLaunchingPlayer = false }
+        // UI tests for the other tabs deliberately start at the app shell.
+#if DEBUG
         let forceFirstUse = ProcessInfo.processInfo.environment["SOUNDSCAPE_FORCE_FIRST_USE"] == "1"
-        if forceFirstUse || !hasOpenedBefore {
-            hasOpenedBefore = true
-            return
-        }
+        if forceFirstUse { return }
+#endif
         if container.player.current != nil {
             restorePlayer()
             return

@@ -6,6 +6,7 @@ xcuserdata/
 .swiftpm/
 .build/
 workspace/
+.commandcode/
 Soundscape.xcodeproj/
 !Soundscape.xcodeproj/project.pbxproj
 !Soundscape.xcodeproj/project.xcworkspace/

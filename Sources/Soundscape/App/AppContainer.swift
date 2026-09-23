@@ -46,7 +46,7 @@ final class AppContainer {
             cache: DiskPublicSoundscapeCache()
         )
         let identity = PanorIdentityRepository(environment: environment, client: client, tokenStore: tokenStore)
-        let session = IdentitySession(repository: identity)
+        let session = IdentitySession(repository: identity, avatarStore: DiskProfileAvatarStore())
         let matching = LocalResonanceMatchingService(
             repository: soundscapes,
             store: ProtectedFileResonanceStateStore()

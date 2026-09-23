@@ -6,6 +6,7 @@ struct DiscoveryMapView: View {
     @Environment(LocaleManager.self) private var localeManager
     @State private var model: DiscoveryMapViewModel
     @State private var position: MapCameraPosition = .automatic
+    @State private var favoriteError: AppError?
     let player: AudioPlayerController
     let isActive: Bool
 
@@ -37,6 +38,14 @@ struct DiscoveryMapView: View {
             }
         }
         .environment(\.locale, Locale(identifier: locale.rawValue))
+        .alert(loc(.librarySaved), isPresented: Binding(
+            get: { favoriteError != nil },
+            set: { if !$0 { favoriteError = nil } }
+        )) {
+            Button(loc(.generalOK)) { favoriteError = nil }
+        } message: {
+            Text(favoriteError?.userMessage ?? loc(.errorTryAgain))
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -115,9 +124,12 @@ struct DiscoveryMapView: View {
                     }
 
                     if let selected = items.first(where: { $0.id == model.selectedID }) {
-                        MapSelectionCard(soundscape: selected) {
-                            Task { await player.openPlayer(selected, sequence: items, source: .map) }
-                        }
+                        MapSelectionCard(
+                            soundscape: selected,
+                            isSaved: player.savedSoundscapeIDs.contains(selected.id),
+                            play: { Task { await player.openPlayer(selected, sequence: items, source: .map) } },
+                            favorite: { toggleFavorite(selected) }
+                        )
                             .padding(14)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
@@ -126,6 +138,19 @@ struct DiscoveryMapView: View {
                 .padding(.horizontal, 14)
             }
             .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.82), value: model.selectedID)
+        }
+    }
+
+    private func toggleFavorite(_ soundscape: Soundscape) {
+        Task {
+            do {
+                _ = try await player.toggleSaved(soundscape)
+                favoriteError = nil
+            } catch let error as AppError {
+                favoriteError = error
+            } catch {
+                favoriteError = .transport(String(describing: type(of: error)))
+            }
         }
     }
 
@@ -160,7 +185,9 @@ struct DiscoveryMapView: View {
 private struct MapSelectionCard: View {
     @Environment(LocaleManager.self) private var localeManager
     let soundscape: Soundscape
+    let isSaved: Bool
     let play: () -> Void
+    let favorite: () -> Void
 
     var body: some View {
         let locale = localeManager.current
@@ -190,14 +217,27 @@ private struct MapSelectionCard: View {
                     .lineLimit(1)
             }
             Spacer()
-            Button(action: play) {
-                Image(systemName: "play")
+            VStack(spacing: 8) {
+                Button(action: favorite) {
+                    Image(systemName: isSaved ? "heart.fill" : "heart")
+                }
+                .buttonStyle(CircularActionStyle(
+                    foreground: SoundscapeTheme.ink,
+                    background: SoundscapeTheme.paperDeep,
+                    size: 40
+                ))
+                .accessibilityLabel(isSaved ? loc(.playerUnsave) : loc(.playerSave))
+                .accessibilityIdentifier("map-favorite-\(soundscape.id)")
+
+                Button(action: play) {
+                    Image(systemName: "play")
+                }
+                .buttonStyle(CircularActionStyle(
+                    foreground: SoundscapeTheme.paperRaised,
+                    background: SoundscapeTheme.ink,
+                    size: 40
+                ))
             }
-            .buttonStyle(CircularActionStyle(
-                foreground: SoundscapeTheme.paperRaised,
-                background: SoundscapeTheme.ink,
-                size: 46
-            ))
         }
         .padding(14)
         .background(SoundscapeTheme.paperRaised)

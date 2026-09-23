@@ -22,6 +22,7 @@ Run `scripts/ci.sh` before handoff.
 
 - **Stable Xcode**: `/Users/wilsonxu/Applications/Xcode-26.6.0.app` (Xcode 26.6, 17F113)
 - **Use with**: `DEVELOPER_DIR=/Users/wilsonxu/Applications/Xcode-26.6.0.app/Contents/Developer xcodebuild ...`
+- **Simulator target**: always build, install, and verify against the DeviceHub simulator named `Soundscape Store 6.7`; resolve its UDID live. Do not substitute the unrelated `Klik new UI` simulator.
 - **Archive**: `DEVELOPER_DIR=... xcodebuild archive -project Soundscape.xcodeproj -scheme Soundscape -archivePath /tmp/Soundscape.xcarchive -destination "generic/platform=iOS" -configuration Release`
 - **Upload to ASC**: `DEVELOPER_DIR=... xcodebuild -exportArchive -archivePath /tmp/Soundscape.xcarchive -exportOptionsPlist scripts/AppStoreUploadOptions.plist -exportPath /tmp/Soundscape_Export -allowProvisioningUpdates`
 - **Critical**: Must set `PATH="/usr/bin:/bin:$PATH"` before upload to avoid Homebrew rsync incompatibility (`--extended-attributes` flag).

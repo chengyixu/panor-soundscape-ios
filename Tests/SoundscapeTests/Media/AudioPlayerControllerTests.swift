@@ -4,6 +4,130 @@ import XCTest
 
 @MainActor
 final class AudioPlayerControllerTests: XCTestCase {
+    func testMapFavoriteMutationAndRefreshShareOneServerBackedState() async throws {
+        let repository = StubSoundscapeRepository()
+        await repository.setSavedResult(.success([TestFixtures.soundscape]))
+        let player = AudioPlayerController(repository: repository, engine: StubAudioPlaybackEngine(), audioSession: StubPlaybackAudioSession())
+
+        try await player.refreshSavedSoundscapes()
+        XCTAssertTrue(player.savedSoundscapeIDs.contains(TestFixtures.soundscape.id))
+
+        await repository.setToggleSaveResult(.success(SaveResponse(saved: false, saveCount: 2)))
+        let saved = try await player.toggleSaved(TestFixtures.soundscape)
+        XCTAssertFalse(saved)
+        XCTAssertFalse(player.savedSoundscapeIDs.contains(TestFixtures.soundscape.id))
+    }
+
+    func testSystemEngineOverlapsRealPlayersAndParkingStopsBoth() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("crossfade-\(UUID()).caf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 441_000)!
+        buffer.frameLength = buffer.frameCapacity
+        for frame in 0..<Int(buffer.frameLength) {
+            buffer.floatChannelData![0][frame] = Float(sin(Double(frame) * 2 * .pi * 220 / 44_100)) * 0.005
+        }
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: format.settings)
+            try file.write(from: buffer)
+        }
+        var outputs: [AVPlayer] = []
+        let engine = SystemAudioPlaybackEngine { item in
+            let output = AVPlayer(playerItem: item)
+            outputs.append(output)
+            return output
+        }
+        defer { engine.stop() }
+        func waitForPlaying(_ output: AVPlayer) async throws {
+            for _ in 0..<200 {
+                if output.timeControlStatus == .playing { return }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTFail("Real AVPlayer never reached playing")
+        }
+        try engine.load(url: url)
+        try engine.play()
+        try await waitForPlaying(outputs[0])
+        try engine.crossfade(to: url, duration: 0.3)
+        try engine.play()
+        try await waitForPlaying(outputs[1])
+        try await Task.sleep(for: .milliseconds(80))
+        XCTAssertGreaterThan(outputs[0].volume, 0)
+        XCTAssertGreaterThan(outputs[1].volume, 0)
+        XCTAssertEqual(outputs[0].rate, 1)
+        try await Task.sleep(for: .milliseconds(350))
+        XCTAssertEqual(outputs[0].rate, 0)
+        XCTAssertEqual(outputs[1].volume, 1, accuracy: 0.01)
+        try engine.crossfade(to: url, duration: 0.3)
+        try engine.play()
+        engine.pause()
+        try await Task.sleep(for: .milliseconds(350))
+        XCTAssertTrue(outputs.allSatisfy { $0.rate == 0 }, "Parking must silence outgoing and incoming players")
+    }
+
+    func testNeedleBrowsingDucksWithoutPausingAndSameTrackReleaseDoesNotRestart() async {
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(repository: StubSoundscapeRepository(), engine: engine, audioSession: StubPlaybackAudioSession())
+        await player.openPlayer(TestFixtures.soundscape)
+        engine.startPlaying()
+        engine.progress(elapsed: 12, duration: 60)
+        player.setBrowsing(true)
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertTrue(player.isBrowsing)
+        XCTAssertEqual(engine.pauseCount, 0)
+        XCTAssertEqual(engine.volumeChanges.last?.volume, 0.25)
+        await player.commitNeedleSelection(TestFixtures.soundscape)
+        XCTAssertEqual(engine.volumeChanges.last?.volume, 1)
+        XCTAssertEqual(engine.loadedURLs.count, 1)
+        XCTAssertEqual(player.elapsedSeconds, 12)
+        XCTAssertFalse(player.isBrowsing)
+    }
+
+    func testReleaseOnAnotherTrackCrossfadesWithoutStoppingOldOutputFirst() async {
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(repository: StubSoundscapeRepository(), engine: engine, audioSession: StubPlaybackAudioSession())
+        await player.openPlayer(TestFixtures.soundscape)
+        engine.startPlaying()
+        let stopsBefore = engine.stopCount
+        player.setBrowsing(true)
+        let candidate = TestFixtures.soundscapeWithoutCoordinate
+        await player.commitNeedleSelection(candidate)
+        XCTAssertEqual(engine.crossfadeDurations, [0.3])
+        XCTAssertEqual(engine.stopCount, stopsBefore)
+        XCTAssertEqual(player.current?.id, candidate.id)
+        player.pause()
+        engine.startPlaying()
+        XCTAssertEqual(player.phase, .paused, "A queued engine callback must not undo parking")
+        XCTAssertFalse(player.isBrowsing)
+    }
+
+    func testDefaultPlayerUsesEntirePlayableCatalog() async throws {
+        let repository = StubSoundscapeRepository()
+        await repository.setExploreResult(.success([TestFixtures.soundscape, TestFixtures.soundscapeWithoutCoordinate]))
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(repository: repository, engine: engine, audioSession: StubPlaybackAudioSession())
+        await player.openPlayer(TestFixtures.soundscape, sequence: [TestFixtures.soundscape])
+        try await player.loadVinylCatalog()
+        XCTAssertNotNil(player.presentedSoundscape)
+        let catalog = try await repository.explore(category: nil).filter { $0.audioURL != nil }
+        XCTAssertEqual(player.vinylStream, catalog)
+        XCTAssertEqual(engine.playCount, 1)
+    }
+
+    func testRouteLossWhileIncomingSoundBuffersStopsPlayback() async {
+        let engine = StubAudioPlaybackEngine()
+        let session = StubPlaybackAudioSession()
+        let player = AudioPlayerController(repository: StubSoundscapeRepository(), engine: engine, audioSession: session)
+        await player.openPlayer(TestFixtures.soundscape)
+        engine.startPlaying()
+        await player.commitNeedleSelection(TestFixtures.soundscapeWithoutCoordinate)
+        XCTAssertEqual(player.phase, .loading)
+        session.loseOutputRoute()
+        XCTAssertEqual(player.phase, .paused)
+        XCTAssertEqual(engine.pauseCount, 1)
+        engine.startPlaying()
+        XCTAssertEqual(player.phase, .paused)
+    }
     func testPlaybackAudioSessionConfigurationAvoidsRecordOnlyRoutingOptions() {
         let configuration = AudioSessionLifecycle.configuration(for: .playback)
 
@@ -155,7 +279,7 @@ final class AudioPlayerControllerTests: XCTestCase {
         XCTAssertEqual(reports.map(\.listenedSeconds), [12, 8])
     }
 
-    func testCompletionReportsLoopAndRestartsWithoutDeactivatingSession() async {
+    func testDefaultRepeatOneCompletionReportsLoopAndRestartsWithoutDeactivatingSession() async {
         let repository = StubSoundscapeRepository()
         let engine = StubAudioPlaybackEngine()
         let session = StubPlaybackAudioSession()
@@ -167,12 +291,78 @@ final class AudioPlayerControllerTests: XCTestCase {
         engine.finish()
         await player.flushTelemetry()
 
+        XCTAssertEqual(player.playbackMode, .repeatOne)
         XCTAssertTrue(player.isPlaying)
         XCTAssertEqual(player.elapsedSeconds, 0)
         XCTAssertEqual(engine.restartCount, 1)
         XCTAssertEqual(session.deactivationCount, 0)
         let reports = await repository.reportedPlays
         XCTAssertEqual(reports.map(\.listenedSeconds), [699])
+    }
+
+    func testContinuousPlaybackAdvancesToNextTrackAndWraps() async {
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(
+            repository: StubSoundscapeRepository(),
+            engine: engine,
+            audioSession: StubPlaybackAudioSession()
+        )
+        await player.openPlayer(
+            TestFixtures.soundscape,
+            sequence: [TestFixtures.soundscape, TestFixtures.soundscapeWithoutCoordinate]
+        )
+        player.setPlaybackMode(.continuous)
+        engine.startPlaying()
+
+        engine.finish()
+        await waitUntil { player.current?.id == TestFixtures.soundscapeWithoutCoordinate.id }
+        XCTAssertEqual(engine.restartCount, 0)
+
+        engine.startPlaying()
+        engine.finish()
+        await waitUntil { player.current?.id == TestFixtures.soundscape.id }
+    }
+
+    func testShufflePlaybackDoesNotRepeatCurrentTrackWhenAnotherTrackExists() async {
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(
+            repository: StubSoundscapeRepository(),
+            engine: engine,
+            audioSession: StubPlaybackAudioSession()
+        )
+        await player.openPlayer(
+            TestFixtures.soundscape,
+            sequence: [TestFixtures.soundscape, TestFixtures.soundscapeWithoutCoordinate]
+        )
+        player.setPlaybackMode(.shuffle)
+        engine.startPlaying()
+
+        engine.finish()
+        await waitUntil { player.current?.id == TestFixtures.soundscapeWithoutCoordinate.id }
+
+        XCTAssertEqual(engine.restartCount, 0)
+        XCTAssertEqual(player.playbackMode, .shuffle)
+    }
+
+    func testChangingPlaybackModeDoesNotInterruptCurrentAudio() async {
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(
+            repository: StubSoundscapeRepository(),
+            engine: engine,
+            audioSession: StubPlaybackAudioSession()
+        )
+        await player.play(TestFixtures.soundscape)
+        engine.startPlaying()
+        let loadedURLs = engine.loadedURLs
+        let playCount = engine.playCount
+
+        player.setPlaybackMode(.continuous)
+        player.setPlaybackMode(.shuffle)
+
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertEqual(engine.loadedURLs, loadedURLs)
+        XCTAssertEqual(engine.playCount, playCount)
+        XCTAssertEqual(engine.pauseCount, 0)
     }
 
     func testNextAdvancesConfiguredSequenceAndWraps() async {
@@ -369,6 +559,17 @@ final class AudioPlayerControllerTests: XCTestCase {
         XCTAssertEqual(feedback.map(\.feedback.kind), [.skipped])
         XCTAssertEqual(feedback.first?.feedback.reason, .notNow)
         XCTAssertEqual(player.current?.id, TestFixtures.soundscapeWithoutCoordinate.id)
+    }
+
+    private func waitUntil(
+        timeoutIterations: Int = 100,
+        condition: @MainActor () -> Bool
+    ) async {
+        for _ in 0..<timeoutIterations {
+            if condition() { return }
+            await Task.yield()
+        }
+        XCTFail("Condition did not become true")
     }
 
     private func recommendationBatch() -> RecommendationBatch {

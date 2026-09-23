@@ -66,6 +66,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerSelectTrack
     case playerDetails
     case playerRecordingDetails
+    case playerMemo
     case playerAuthor
     case playerLocation
     case playerDuration
@@ -88,13 +89,24 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerNeedlePaused
     case playerNeedlePlaying
     case playerNeedleGestureHint
+    case playerNeedleRaised
+    case playerReleaseToPause
+    case playerLiftNeedle
+    case playerLowerNeedle
+    case playerBrowseHint
     case playerPause
     case playerPlay
     case playerOpenPlayer
     case playerMoveIndicatorHint
     case playerClosePlayer
+    case playerPlaybackMode
+    case playerPlaybackModeHint
+    case playerRepeatOne
+    case playerContinuous
+    case playerShuffle
     case playerFeedbackTitle
     case playerFeedbackDetail
+    case playerUnknownDate
     case playerResonates
     case playerNotNow
     case playerLessLikeThis
@@ -192,6 +204,9 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case librarySignedOutTitle
     case librarySignedOutDetail
     case librarySignInOrRegister
+    case libraryChangeAvatar
+    case libraryAvatarLocalOnly
+    case libraryAvatarUploadFailed
     case libraryReadingRecordings
     case libraryNoRecordingsTitle
     case libraryNoRecordingsDetail
@@ -379,6 +394,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerSelectTrack: "选择声音"
         case .playerDetails: "详情"
         case .playerRecordingDetails: "录音详情"
+        case .playerMemo: "声音小记"
         case .playerAuthor: "作者"
         case .playerLocation: "地点"
         case .playerDuration: "时长"
@@ -400,14 +416,25 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNeedle: "唱针"
         case .playerNeedlePaused: "唱片外，已暂停"
         case .playerNeedlePlaying: "唱片上，播放中"
-        case .playerNeedleGestureHint: "左右拖动控制播放；上下拖动选择声音"
+        case .playerNeedleGestureHint: "拖动唱针选曲，松手播放。在上下边缘停留可循环浏览，移出唱片并松手暂停。"
+        case .playerNeedleRaised: "松手播放所选声音"
+        case .playerReleaseToPause: "松手暂停"
+        case .playerLiftNeedle: "抬起唱针"
+        case .playerLowerNeedle: "落针播放"
+        case .playerBrowseHint: "拖动选曲，松手播放。边缘停留继续浏览，移出唱片暂停。"
         case .playerPause: "暂停"
         case .playerPlay: "播放"
         case .playerOpenPlayer: "打开播放器"
         case .playerMoveIndicatorHint: "拖动唱片图标移动；点击打开播放器"
         case .playerClosePlayer: "关闭播放器"
+        case .playerPlaybackMode: "播放模式"
+        case .playerPlaybackModeHint: "选择声音播放结束后的播放方式"
+        case .playerRepeatOne: "单曲循环"
+        case .playerContinuous: "持续播放"
+        case .playerShuffle: "随机播放"
         case .playerFeedbackTitle: "这段声音适合你吗？"
         case .playerFeedbackDetail: "反馈会优先调整当前会话，再缓慢更新长期偏好。"
+        case .playerUnknownDate: "时间未知"
         case .playerResonates: "有共鸣"
         case .playerNotNow: "不是现在"
         case .playerLessLikeThis: "少推荐这类"
@@ -499,6 +526,9 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .librarySignedOutTitle: "登录后查看你的声音库"
         case .librarySignedOutDetail: "使用 Panor 账号发布、设为私密或删除自己的录音。"
         case .librarySignInOrRegister: "登录或注册"
+        case .libraryChangeAvatar: "更换头像"
+        case .libraryAvatarLocalOnly: "从相册选取照片；头像仅保存在这台设备上"
+        case .libraryAvatarUploadFailed: "头像保存失败"
         case .libraryReadingRecordings: "正在读取你的录音"
         case .libraryNoRecordingsTitle: "还没有录音"
         case .libraryNoRecordingsDetail: "去创作页捕捉第一段真实环境声。"
@@ -670,6 +700,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerSelectTrack: "Select a Track"
         case .playerDetails: "Details"
         case .playerRecordingDetails: "Recording Details"
+        case .playerMemo: "Memo"
         case .playerAuthor: "Author"
         case .playerLocation: "Location"
         case .playerDuration: "Duration"
@@ -691,14 +722,25 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNeedle: "Tonearm"
         case .playerNeedlePaused: "Off the record, paused"
         case .playerNeedlePlaying: "On the record, playing"
-        case .playerNeedleGestureHint: "Drag left or right to control playback; drag up or down to select a recording"
+        case .playerNeedleGestureHint: "Drag to choose, release to play. Hold at the top or bottom edge to browse endlessly. Release outside the record to pause."
+        case .playerNeedleRaised: "Release to play your selection"
+        case .playerReleaseToPause: "Release to pause"
+        case .playerLiftNeedle: "Lift needle"
+        case .playerLowerNeedle: "Lower needle to play"
+        case .playerBrowseHint: "Drag to choose. Release to play. Hold at an edge to browse; move off the record to pause."
         case .playerPause: "Pause"
         case .playerPlay: "Play"
         case .playerOpenPlayer: "Open player"
         case .playerMoveIndicatorHint: "Drag the record to move it; tap to open the player"
         case .playerClosePlayer: "Close player"
+        case .playerPlaybackMode: "Playback mode"
+        case .playerPlaybackModeHint: "Choose what plays after the current sound ends"
+        case .playerRepeatOne: "Repeat One"
+        case .playerContinuous: "Continuous"
+        case .playerShuffle: "Shuffle"
         case .playerFeedbackTitle: "Does this sound fit?"
         case .playerFeedbackDetail: "Feedback adjusts this session first, then updates long-term taste more slowly."
+        case .playerUnknownDate: "Unknown date"
         case .playerResonates: "Resonates"
         case .playerNotNow: "Not now"
         case .playerLessLikeThis: "Less like this"
@@ -775,13 +817,13 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .libraryLoading: "Loading your archive"
         case .libraryEmpty: "You have no recordings or saves yet."
         case .libraryMyRecordings: "My Recordings"
-        case .librarySaved: "Saved"
+        case .librarySaved: "Favorites"
         case .libraryMakePublic: "Make Public"
         case .libraryMakePrivate: "Make Private"
         case .libraryDelete: "Delete"
         case .libraryDeleteConfirm: "Are you sure you want to delete this recording? This cannot be undone."
         case .libraryCancel: "Cancel"
-        case .librarySavedEmpty: "No saved soundscapes yet."
+        case .librarySavedEmpty: "No favorite sounds yet."
         case .libraryMyEmpty: "No recordings yet."
         case .libraryForYou: "For You"
         case .libraryClose: "Close"
@@ -790,6 +832,9 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .librarySignedOutTitle: "Sign in to view your audio library"
         case .librarySignedOutDetail: "Use your Panor account to publish, make private, or delete your recordings."
         case .librarySignInOrRegister: "Sign In or Register"
+        case .libraryChangeAvatar: "Change avatar"
+        case .libraryAvatarLocalOnly: "Choose a photo; your avatar is saved only on this device"
+        case .libraryAvatarUploadFailed: "Avatar could not be saved"
         case .libraryReadingRecordings: "Reading your recordings"
         case .libraryNoRecordingsTitle: "No recordings yet"
         case .libraryNoRecordingsDetail: "Go capture your first real-world soundscape."
@@ -961,6 +1006,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerSelectTrack: "選擇聲音"
         case .playerDetails: "詳情"
         case .playerRecordingDetails: "錄音詳情"
+        case .playerMemo: "聲音小記"
         case .playerAuthor: "作者"
         case .playerLocation: "地點"
         case .playerDuration: "時長"
@@ -982,14 +1028,25 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNeedle: "唱針"
         case .playerNeedlePaused: "唱片外，已暫停"
         case .playerNeedlePlaying: "唱片上，播放中"
-        case .playerNeedleGestureHint: "左右拖動控制播放；上下拖動選擇聲音"
+        case .playerNeedleGestureHint: "拖動唱針選曲，鬆手播放。在上下邊緣停留可循環瀏覽，移出唱片並鬆手暫停。"
+        case .playerNeedleRaised: "鬆手播放所選聲音"
+        case .playerReleaseToPause: "鬆手暫停"
+        case .playerLiftNeedle: "抬起唱針"
+        case .playerLowerNeedle: "落針播放"
+        case .playerBrowseHint: "拖動選曲，鬆手播放。邊緣停留繼續瀏覽，移出唱片暫停。"
         case .playerPause: "暫停"
         case .playerPlay: "播放"
         case .playerOpenPlayer: "開啟播放器"
         case .playerMoveIndicatorHint: "拖動唱片圖示移動；點擊開啟播放器"
         case .playerClosePlayer: "關閉播放器"
+        case .playerPlaybackMode: "播放模式"
+        case .playerPlaybackModeHint: "選擇目前聲音結束後的播放方式"
+        case .playerRepeatOne: "單曲循環"
+        case .playerContinuous: "持續播放"
+        case .playerShuffle: "隨機播放"
         case .playerFeedbackTitle: "這段聲音適合你嗎？"
         case .playerFeedbackDetail: "回饋會優先調整目前工作階段，再緩慢更新長期偏好。"
+        case .playerUnknownDate: "時間未知"
         case .playerResonates: "有共鳴"
         case .playerNotNow: "不是現在"
         case .playerLessLikeThis: "少推薦這類"
@@ -1099,6 +1156,9 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .librarySignedOutTitle: "登錄後查看你的聲音庫"
         case .librarySignedOutDetail: "使用 Panor 帳號發佈、設為私密或刪除自己的錄音。"
         case .librarySignInOrRegister: "登錄或註冊"
+        case .libraryChangeAvatar: "更換頭像"
+        case .libraryAvatarLocalOnly: "從相簿選取照片；頭像只儲存在這部裝置上"
+        case .libraryAvatarUploadFailed: "頭像無法儲存"
         case .libraryReadingRecordings: "正在讀取你的錄音"
         case .libraryNoRecordingsTitle: "還沒有錄音"
         case .libraryNoRecordingsDetail: "去創作頁捕捉第一段真實環境聲。"

@@ -271,4 +271,18 @@ final class APIClientContractTests: XCTestCase {
         let requests = await transport.requests
         XCTAssertEqual(requests.first?.timeoutInterval, 180)
     }
+
+    func testSavedSoundscapesUseAuthenticatedCanonicalEndpoint() async throws {
+        let body = Data("[]".utf8)
+        let transport = StubHTTPTransport(stubs: [.init(data: body, status: 200)])
+        let client = APIClient(transport: transport, tokenStore: InMemoryTokenStore(token: "test-token"))
+        let repository = RemoteSoundscapeRepository(environment: .production, client: client)
+
+        _ = try await repository.saved()
+
+        let requests = await transport.requests
+        let request = try XCTUnwrap(requests.first)
+        XCTAssertEqual(request.url?.absoluteString, "https://www.panor.tech/soundscape/api/me/saved")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
+    }
 }

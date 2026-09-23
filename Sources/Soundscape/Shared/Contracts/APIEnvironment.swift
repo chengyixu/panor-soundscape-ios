@@ -28,6 +28,7 @@ enum SoundscapeAPIPath: Sendable, Equatable {
     case save(Int)
     case visibility(Int)
     case mySoundscapes
+    case savedSoundscapes
     case rankings
     case aiTitle
     case aiCover
@@ -42,6 +43,7 @@ enum SoundscapeAPIPath: Sendable, Equatable {
         case .save(let id): "/soundscapes/\(id)/save"
         case .visibility(let id): "/soundscapes/\(id)/visibility"
         case .mySoundscapes: "/me/soundscapes"
+        case .savedSoundscapes: "/me/saved"
         case .rankings: "/rankings"
         case .aiTitle: "/ai/title"
         case .aiCover: "/ai/cover"

@@ -112,6 +112,8 @@ actor StubSoundscapeRepository: SoundscapeRepository {
     var exploreResult: Result<[Soundscape], AppError> = .success([])
     var rankingResult: Result<[RankingLane], AppError> = .success([])
     var mineResult: Result<[Soundscape], AppError> = .success([])
+    var savedResult: Result<[Soundscape], AppError> = .success([])
+    var toggleSaveResult: Result<SaveResponse, AppError> = .success(SaveResponse(saved: true, saveCount: 3))
     var createdDraft: CreateSoundscapeDraft?
     var reportedPlays: [(id: Int, listenedSeconds: Int)] = []
     var reportPlayResult: Result<PlayResponse, AppError> = .success(PlayResponse(ok: true, fullPlay: false))
@@ -130,6 +132,8 @@ actor StubSoundscapeRepository: SoundscapeRepository {
     func setMineDelay(_ delay: Duration?) { mineDelay = delay }
     func setRankingResult(_ result: Result<[RankingLane], AppError>) { rankingResult = result }
     func setMineResult(_ result: Result<[Soundscape], AppError>) { mineResult = result }
+    func setSavedResult(_ result: Result<[Soundscape], AppError>) { savedResult = result }
+    func setToggleSaveResult(_ result: Result<SaveResponse, AppError>) { toggleSaveResult = result }
     func setReportPlayResult(_ result: Result<PlayResponse, AppError>) { reportPlayResult = result }
     func setVisibilityResult(_ result: Result<Void, AppError>) { visibilityResult = result }
     func setDeleteResult(_ result: Result<Void, AppError>) { deleteResult = result }
@@ -152,6 +156,7 @@ actor StubSoundscapeRepository: SoundscapeRepository {
 
     private func pendingMineDelay() -> Duration? { mineDelay }
     private func currentMine() throws -> [Soundscape] { try mineResult.get() }
+    func saved() async throws -> [Soundscape] { try savedResult.get() }
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape {
         createdDraft = draft
         return TestFixtures.soundscape
@@ -166,7 +171,7 @@ actor StubSoundscapeRepository: SoundscapeRepository {
         reportedPlays.append((id, listenedSeconds))
         return try reportPlayResult.get()
     }
-    func toggleSave(id: Int) async throws -> SaveResponse { SaveResponse(saved: true, saveCount: 3) }
+    func toggleSave(id: Int) async throws -> SaveResponse { try toggleSaveResult.get() }
     func setVisibility(id: Int, isPublic: Bool) async throws {
         visibilityCalls.append((id, isPublic))
         try visibilityResult.get()
@@ -218,6 +223,7 @@ final class StubAudioPlaybackEngine: AudioPlaybackEngine {
     private(set) var restartCount = 0
     private(set) var pauseCount = 0
     private(set) var stopCount = 0
+    private(set) var crossfadeDurations: [TimeInterval] = []
     private(set) var volumeChanges: [(volume: Float, duration: TimeInterval)] = []
 
     func load(url: URL) throws {
@@ -225,6 +231,10 @@ final class StubAudioPlaybackEngine: AudioPlaybackEngine {
         onStateChanged?(.loading)
     }
     func play() throws { playCount += 1 }
+    func crossfade(to url: URL, duration: TimeInterval) throws {
+        crossfadeDurations.append(duration)
+        try load(url: url)
+    }
     func restart() throws {
         restartCount += 1
         onStateChanged?(.playing)

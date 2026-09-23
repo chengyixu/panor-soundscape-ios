@@ -72,6 +72,10 @@ entries:
     symptom: A traditional custom tab bar appears on normal screens while an empty native Liquid Glass tab-bar capsule leaks into the full-screen player.
     observable_signal: SoundscapeUITests reports a native TabBar on the player, or scripts/repo-guards.sh finds both TabView and SoundscapeTabBar in RootTabView.
     prevention: RootTabView owns one custom four-item navigation renderer that stays composed under the player, remains non-hittable while covered, and never coexists with a native TabView.
+  - id: avatar-cross-account-leak-or-false-upload
+    symptom: An avatar photo from a previous account appears after switching users, or a failed local save is presented as a synced account photo.
+    observable_signal: ProfileAvatarTests fails account switching, restore, failed-write, or disk re-creation checks; SoundscapeUITests fails the avatar sign-in affordance.
+    prevention: Key protected local avatar records by a hash of the authenticated user ID, clear the previous avatar before loading another account, and update visible state only after an atomic save; explicitly label that no server upload exists.
   - id: cancelled-player-swipe-offset
     symptom: An interrupted swipe leaves the player partially offscreen with a black strip and the four-tab shell permanently stuck beside it.
     observable_signal: SoundscapeUITests fails the interrupted-swipe settled-page assertion, or scripts/repo-guards.sh finds any interactive horizontal offset in RootTabView.
