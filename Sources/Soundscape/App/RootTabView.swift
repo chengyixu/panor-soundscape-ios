@@ -320,6 +320,37 @@ struct RootTabView: View {
 #if DEBUG
         let forceFirstUse = ProcessInfo.processInfo.environment["SOUNDSCAPE_FORCE_FIRST_USE"] == "1"
         if forceFirstUse { return }
+        if ProcessInfo.processInfo.environment["SOUNDSCAPE_UI_TEST_AUTOPLAY"] == "1" {
+            guard let url = Bundle.main.url(forResource: "AutoplayTestTone", withExtension: "m4a") else {
+                automaticLaunchError = .invalidRequest(loc(.errorNoPlayableReady))
+                return
+            }
+            let fixture = Soundscape(
+                id: -1,
+                ownerID: "ui-test",
+                authorName: "Soundscape",
+                title: "Autoplay test tone",
+                description: "Local audio fixture for cold-launch UI verification.",
+                audioURL: url,
+                coverURL: nil,
+                coverIsAI: false,
+                latitude: nil,
+                longitude: nil,
+                locationName: "Test fixture",
+                category: "nature",
+                promptText: "",
+                personalSocial: 0.5,
+                memoryPresent: 0.5,
+                durationSeconds: 3,
+                isPublic: true,
+                playCount: 0,
+                fullPlayCount: 0,
+                saveCount: 0,
+                createdAt: ""
+            )
+            await container.player.openPlayer(fixture, sequence: [fixture], source: .direct)
+            return
+        }
 #endif
         if container.player.current != nil {
             restorePlayer()

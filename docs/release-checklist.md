@@ -7,7 +7,7 @@ scripts/ci.sh
 SOUNDSCAPE_VERIFY_LIVE=1 scripts/verify-api-contract.sh
 ```
 
-The CI script regenerates the Xcode project, runs repository invariants, performs a signed clean stable-runtime simulator build, executes unit tests (including a real Keychain round trip), and navigates all five primary tabs through XCUITest. The live preflight verifies both Soundscape OpenAPI parity and the unified auth registration field contract.
+The CI script regenerates the Xcode project, runs repository invariants, performs a signed clean stable-runtime simulator build, executes unit tests (including a real Keychain round trip), and navigates all five primary tabs through XCUITest. The cold-launch playback UI test uses a bundled three-second AAC recording under the DEBUG-only `SOUNDSCAPE_UI_TEST_AUTOPLAY` launch flag; it verifies that the real AVPlayer reaches playing without depending on network media. Normal launches never use the fixture. The live preflight verifies both Soundscape OpenAPI parity and the unified auth registration field contract.
 
 ## Bundle invariants
 
