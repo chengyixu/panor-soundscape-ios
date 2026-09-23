@@ -328,7 +328,7 @@ final class SoundscapeUITests: XCTestCase {
         app.launchEnvironment["SOUNDSCAPE_UI_TEST_AUTOPLAY"] = "1"
         app.launch()
         XCTAssertTrue(app.otherElements["turntable-player"].waitForExistence(timeout: 20))
-        XCTAssertTrue(app.buttons["turntable-metadata"].label.contains("Autoplay test tone"))
+        XCTAssertTrue(app.buttons["turntable-metadata"].label.contains("测试音频"))
         let playing = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "value == %@", "唱针位于唱片上"),
             object: app.buttons["turntable-metadata"]

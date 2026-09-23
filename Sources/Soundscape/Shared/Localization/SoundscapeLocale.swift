@@ -81,6 +81,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerNeedleParked
     case playerNeedleOnRecord
     case playerTurntable
+    case playerAutoplayTestTone
     case playerSave
     case playerUnsave
     case playerOpenDetailsHint
@@ -409,6 +410,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNeedleParked: "唱针已移出"
         case .playerNeedleOnRecord: "唱针位于唱片上"
         case .playerTurntable: "唱片机播放器"
+        case .playerAutoplayTestTone: "测试音频"
         case .playerSave: "收藏"
         case .playerUnsave: "取消收藏"
         case .playerOpenDetailsHint: "打开声音详情"
@@ -715,6 +717,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNeedleParked: "Needle parked"
         case .playerNeedleOnRecord: "Needle on record"
         case .playerTurntable: "Turntable player"
+        case .playerAutoplayTestTone: "Autoplay test tone"
         case .playerSave: "Save"
         case .playerUnsave: "Remove from saved"
         case .playerOpenDetailsHint: "Open recording details"
@@ -1021,6 +1024,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNeedleParked: "唱針已移出"
         case .playerNeedleOnRecord: "唱針位於唱片上"
         case .playerTurntable: "唱片機播放器"
+        case .playerAutoplayTestTone: "測試音訊"
         case .playerSave: "收藏"
         case .playerUnsave: "取消收藏"
         case .playerOpenDetailsHint: "開啟聲音詳情"
