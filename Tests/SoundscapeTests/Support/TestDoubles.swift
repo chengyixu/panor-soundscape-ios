@@ -165,8 +165,9 @@ actor StubSoundscapeRepository: SoundscapeRepository {
         TitleSuggestion(title: "雨落站台", description: "列车离开后，雨声留在空站台。")
     }
     func suggestCover(_ request: CoverSuggestionRequest) async throws -> CoverSuggestion {
-        CoverSuggestion(coverURL: "/soundscape/uploads/covers/generated.png", coverIsAI: 1)
+        CoverSuggestion(coverURL: "/soundscape/api/staged-covers/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png", coverIsAI: 1)
     }
+    func previewStagedCover(path: String) async throws -> Data { Data([0x89, 0x50, 0x4E, 0x47]) }
     func reportPlay(id: Int, listenedSeconds: Int) async throws -> PlayResponse {
         reportedPlays.append((id, listenedSeconds))
         return try reportPlayResult.get()

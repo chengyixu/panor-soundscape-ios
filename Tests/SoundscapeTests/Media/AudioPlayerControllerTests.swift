@@ -101,6 +101,31 @@ final class AudioPlayerControllerTests: XCTestCase {
         XCTAssertFalse(player.isBrowsing)
     }
 
+    func testCatalogFailureCannotReusePreviouslyLoadedPublicSounds() async throws {
+        let repository = StubSoundscapeRepository()
+        let player = AudioPlayerController(repository: repository, engine: StubAudioPlaybackEngine(), audioSession: StubPlaybackAudioSession())
+        await repository.setExploreResult(.success([TestFixtures.soundscape]))
+        try await player.loadVinylCatalog()
+        XCTAssertEqual(player.availableSoundscapes.count, 1)
+        await repository.setExploreResult(.failure(.transport("offline")))
+        do { try await player.loadVinylCatalog(); XCTFail("Expected an unavailable server") }
+        catch let error as AppError { XCTAssertEqual(error, .transport("offline")) }
+        XCTAssertTrue(player.availableSoundscapes.isEmpty)
+    }
+
+    func testBlockingCreatorRemovesPlayerAndCatalogCandidatesImmediately() async throws {
+        let repository = StubSoundscapeRepository()
+        let engine = StubAudioPlaybackEngine()
+        let player = AudioPlayerController(repository: repository, engine: engine, audioSession: StubPlaybackAudioSession())
+        await repository.setExploreResult(.success([TestFixtures.soundscape]))
+        try await player.loadVinylCatalog()
+        await player.openPlayer(TestFixtures.soundscape)
+        player.removeCreator(TestFixtures.soundscape.ownerID)
+        XCTAssertNil(player.current)
+        XCTAssertNil(player.presentedSoundscape)
+        XCTAssertTrue(player.vinylStream.isEmpty)
+    }
+
     func testDefaultPlayerUsesEntirePlayableCatalog() async throws {
         let repository = StubSoundscapeRepository()
         await repository.setExploreResult(.success([TestFixtures.soundscape, TestFixtures.soundscapeWithoutCoordinate]))

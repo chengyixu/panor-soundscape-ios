@@ -27,6 +27,7 @@ final class CreateSoundscapeViewModel {
     private(set) var audio: MediaFile?
     private(set) var uploadedCover: MediaFile?
     private(set) var generatedCoverPath: String?
+    private(set) var stagedCoverData: Data?
     private(set) var place: Place?
     private(set) var locationStatus: LocationStatus = .idle
     private(set) var generationError: AppError?
@@ -112,6 +113,7 @@ final class CreateSoundscapeViewModel {
         do {
             uploadedCover = try MediaConstraints.cover(data: data)
             generatedCoverPath = nil
+            stagedCoverData = nil
         } catch let error as AppError {
             phase = .failed(error)
         } catch {
@@ -140,6 +142,7 @@ final class CreateSoundscapeViewModel {
         phase = .generatingCover
         do {
             let suggestion = try await repository.suggestCover(coverRequest)
+            stagedCoverData = try await repository.previewStagedCover(path: suggestion.coverURL)
             generatedCoverPath = suggestion.coverURL
             uploadedCover = nil
             generationError = nil
@@ -173,6 +176,7 @@ final class CreateSoundscapeViewModel {
         phase = .generatingCover
         do {
             let suggestion = try await repository.suggestCover(coverRequest)
+            stagedCoverData = try await repository.previewStagedCover(path: suggestion.coverURL)
             generatedCoverPath = suggestion.coverURL
             uploadedCover = nil
             generationError = nil
@@ -227,6 +231,7 @@ final class CreateSoundscapeViewModel {
         audio = nil
         uploadedCover = nil
         generatedCoverPath = nil
+        stagedCoverData = nil
         place = nil
         locationStatus = .idle
         generationError = nil

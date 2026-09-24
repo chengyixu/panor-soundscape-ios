@@ -475,7 +475,19 @@ final class AudioPlayerController {
     }
 
     func loadVinylCatalog() async throws {
+        // Do not keep the last public catalog visible when a moderation refresh fails.
+        availableSoundscapes = []
         availableSoundscapes = try await repository.explore(category: nil).filter { $0.audioURL != nil }
+    }
+
+    func removeCreator(_ creatorID: String) {
+        if current?.ownerID == creatorID { stop() }
+        availableSoundscapes.removeAll { $0.ownerID == creatorID }
+        recommendationStream.removeAll { $0.ownerID == creatorID }
+        currentSequenceIndex = current.flatMap { active in
+            recommendationStream.firstIndex { $0.id == active.id }
+        }
+        savedSoundscapeIDs = [] // Rebuild from server before showing any saved state again.
     }
 
     func commitNeedleSelection(_ candidate: Soundscape) async {

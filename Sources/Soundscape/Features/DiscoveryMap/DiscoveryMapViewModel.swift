@@ -10,13 +10,8 @@ final class DiscoveryMapViewModel {
     init(repository: any SoundscapeRepository) { self.repository = repository }
 
     func load(forceRefresh: Bool = false) async {
-        let existingItems: [Soundscape]?
-        if case .loaded(let items) = state {
-            existingItems = items
-        } else {
-            existingItems = nil
-            state = .loading
-        }
+        // A previously fetched marker may have since been removed or blocked.
+        state = .loading
         do {
             let items = try await repository.explore(
                 category: nil,
@@ -27,10 +22,11 @@ final class DiscoveryMapViewModel {
             }
             state = .loaded(items)
         } catch let error as AppError {
-            state = existingItems.map(LoadState.loaded) ?? .failed(error)
+            selectedID = nil
+            state = .failed(error)
         } catch {
-            state = existingItems.map(LoadState.loaded)
-                ?? .failed(.transport(String(describing: type(of: error))))
+            selectedID = nil
+            state = .failed(.transport(String(describing: type(of: error))))
         }
     }
 }

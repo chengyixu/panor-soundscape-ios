@@ -8,6 +8,7 @@ protocol SoundscapeRepository: Sendable {
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape
     func suggestTitle(_ request: TitleSuggestionRequest) async throws -> TitleSuggestion
     func suggestCover(_ request: CoverSuggestionRequest) async throws -> CoverSuggestion
+    func previewStagedCover(path: String) async throws -> Data
     func reportPlay(id: Int, listenedSeconds: Int) async throws -> PlayResponse
     func toggleSave(id: Int) async throws -> SaveResponse
     func setVisibility(id: Int, isPublic: Bool) async throws

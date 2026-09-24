@@ -4,6 +4,7 @@ struct ExploreSurfaceView: View {
     @Environment(LocaleManager.self) private var localeManager
     let repository: any SoundscapeRepository
     let player: AudioPlayerController
+    let isActive: Bool
     @State private var mode: ExploreSurfaceMode = .discover
 
     var body: some View {
@@ -39,9 +40,9 @@ struct ExploreSurfaceView: View {
 
             switch mode {
             case .discover:
-                ExploreView(repository: repository, player: player)
+                ExploreView(repository: repository, player: player, isActive: isActive)
             case .rankings:
-                RankingsView(repository: repository, player: player)
+                RankingsView(repository: repository, player: player, isActive: isActive)
             }
         }
         .soundscapeScreenBackground()

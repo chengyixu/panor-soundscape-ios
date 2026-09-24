@@ -49,6 +49,7 @@ actor APIClient {
         query: [URLQueryItem] = [],
         body: (any Encodable & Sendable)? = nil,
         authenticated: Bool = false,
+        optionalAuthentication: Bool = false,
         timeoutInterval: TimeInterval = 30
     ) async throws -> Response {
         let request = try await makeRequest(
@@ -58,6 +59,7 @@ actor APIClient {
             query: query,
             body: body,
             authenticated: authenticated,
+            optionalAuthentication: optionalAuthentication,
             timeoutInterval: timeoutInterval
         )
         return try await execute(request)
@@ -84,6 +86,17 @@ actor APIClient {
         return try await execute(request)
     }
 
+    func download(baseURL: URL, path: String, maximumBytes: Int = 50_000_000) async throws -> Data {
+        let request = try await makeRequest(baseURL: baseURL, path: path, method: "GET", query: [], body: nil, authenticated: true, optionalAuthentication: false, timeoutInterval: 60)
+        do {
+            let (data, response) = try await transport.data(for: request)
+            guard (200..<300).contains(response.statusCode) else { throw decodeError(data: data, status: response.statusCode) }
+            guard !data.isEmpty, data.count <= maximumBytes else { throw AppError.invalidRequest(loc(.errorAudioTooLarge)) }
+            return data
+        } catch let error as AppError { throw error }
+        catch { throw AppError.transport(String(describing: type(of: error))) }
+    }
+
     private func makeRequest(
         baseURL: URL,
         path: String,
@@ -91,6 +104,7 @@ actor APIClient {
         query: [URLQueryItem],
         body: (any Encodable & Sendable)?,
         authenticated: Bool,
+        optionalAuthentication: Bool,
         timeoutInterval: TimeInterval
     ) async throws -> URLRequest {
         let base = endpointURL(baseURL: baseURL, path: path)
@@ -111,6 +125,8 @@ actor APIClient {
             guard let token = try await tokenStore.token(), !token.isEmpty else {
                 throw AppError.authenticationRequired
             }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if optionalAuthentication, let token = try await tokenStore.token(), !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request

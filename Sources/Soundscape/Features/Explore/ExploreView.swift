@@ -12,10 +12,12 @@ struct ExploreView: View {
     @AppStorage("soundscape.explore.recent-searches") private var storedRecentSearches = "[]"
 
     let player: AudioPlayerController
+    let isActive: Bool
 
-    init(repository: any SoundscapeRepository, player: AudioPlayerController) {
+    init(repository: any SoundscapeRepository, player: AudioPlayerController, isActive: Bool) {
         _model = State(initialValue: ExploreViewModel(repository: repository))
         self.player = player
+        self.isActive = isActive
     }
 
     var body: some View {
@@ -38,7 +40,7 @@ struct ExploreView: View {
             .scrollDismissesKeyboard(.interactively)
             .soundscapeScreenBackground()
             .refreshable { await model.load(forceRefresh: true) }
-            .task { if case .idle = model.state { await model.load() } }
+            .task(id: isActive) { if isActive { await model.load(forceRefresh: true) } }
             .toolbarBackground(SoundscapeTheme.paper, for: .navigationBar)
         }
         .environment(\.locale, Locale(identifier: locale.rawValue))

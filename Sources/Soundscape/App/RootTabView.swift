@@ -19,6 +19,7 @@ struct RootTabView: View {
     @State private var hasNavigatedSinceLaunch = false
     @State private var automaticLaunchError: AppError?
     @State private var savedSyncError: AppError?
+    @State private var creatorBlocked = false
     @State private var isLaunchingPlayer = true
     @State private var vinylDragOffset = CGSize.zero
     @State private var vinylDragStartOffset: CGSize?
@@ -44,7 +45,10 @@ struct RootTabView: View {
                 if let soundscape = container.player.presentedSoundscape ?? container.player.current {
                     TurntablePlayerView(
                         soundscape: soundscape,
-                        player: container.player
+                        player: container.player,
+                        moderation: container.moderation,
+                        session: container.session,
+                        onCreatorBlocked: { creatorBlocked = true }
                     )
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .opacity(playerPresented ? 1 : 0)
@@ -124,6 +128,9 @@ struct RootTabView: View {
         .onChange(of: container.player.presentedSoundscape != nil) { _, _ in
             vinylDragStartOffset = nil
         }
+        .alert(loc(.moderationBlocked), isPresented: $creatorBlocked) {
+            Button(loc(.generalOK)) { creatorBlocked = false }
+        }
         .alert(loc(.forYouCannotAutoPlay), isPresented: automaticLaunchErrorBinding) {
             Button(loc(.generalOK)) { automaticLaunchError = nil }
         } message: {
@@ -142,7 +149,11 @@ struct RootTabView: View {
     private func tabShell(bottomInset: CGFloat) -> some View {
         ZStack {
             tabSurface(for: .explore) {
-                ExploreSurfaceView(repository: container.soundscapes, player: container.player)
+                ExploreSurfaceView(
+                    repository: container.soundscapes,
+                    player: container.player,
+                    isActive: selection == .explore && container.player.presentedSoundscape == nil
+                )
             }
 
             tabSurface(for: .map) {
@@ -166,6 +177,7 @@ struct RootTabView: View {
             tabSurface(for: .me) {
                 LibraryView(
                     repository: container.soundscapes,
+                    moderation: container.moderation,
                     recorder: container.recorder,
                     session: container.session,
                     player: container.player,

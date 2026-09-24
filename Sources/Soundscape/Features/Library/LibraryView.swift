@@ -70,6 +70,7 @@ struct LibraryView: View {
     @Environment(LocaleManager.self) private var localeManager
     @State private var model: LibraryViewModel
     let repository: any SoundscapeRepository
+    let moderation: any ModerationRepository
     let recorder: any RecordingService
     let session: IdentitySession
     let player: AudioPlayerController
@@ -78,6 +79,8 @@ struct LibraryView: View {
     let isActive: Bool
     @State private var showsIdentity = false
     @State private var showsSettings = false
+    @State private var canModerate = false
+    @State private var showsModeration = false
     @State private var pendingDelete: Soundscape?
     @State private var filter: LibraryFilter = .recordings
     @State private var favoriteActionError: AppError?
@@ -88,6 +91,7 @@ struct LibraryView: View {
 
     init(
         repository: any SoundscapeRepository,
+        moderation: any ModerationRepository,
         recorder: any RecordingService,
         session: IdentitySession,
         player: AudioPlayerController,
@@ -97,6 +101,7 @@ struct LibraryView: View {
     ) {
         _model = State(initialValue: LibraryViewModel(repository: repository))
         self.repository = repository
+        self.moderation = moderation
         self.recorder = recorder
         self.session = session
         self.player = player
@@ -112,6 +117,11 @@ struct LibraryView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 25) {
                     profileHeader
+                    if canModerate {
+                        Button(loc(.moderationQueue)) { showsModeration = true }
+                            .buttonStyle(SecondaryActionStyle())
+                            .accessibilityIdentifier("moderation-queue")
+                    }
                     if session.user == nil { signedOut }
                     else {
                         filterTabs
@@ -125,7 +135,17 @@ struct LibraryView: View {
             .soundscapeScreenBackground()
             .refreshable { if session.user != nil { await model.load() } }
             .task(id: "\(session.user?.id ?? "signed-out"):\(isActive)") {
-                if session.user != nil, isActive { await model.load() }
+                if session.user != nil, isActive {
+                    await model.load()
+                    do {
+                        canModerate = try await moderation.hasModeratorAccess()
+                    } catch {
+                        canModerate = false
+                        // The backend still checks authorization on every admin call.
+                        // A failed check is not proof of non-moderator status.
+                        avatarActionError = .transport(String(describing: type(of: error)))
+                    }
+                } else if session.user == nil { canModerate = false }
             }
             .sheet(isPresented: $showsIdentity) { IdentitySheet(session: session) }
             .onChange(of: selectedAvatarPhoto) { _, selection in
@@ -139,6 +159,9 @@ struct LibraryView: View {
                 Button(loc(.generalOK)) { avatarActionError = nil; session.dismissAvatarError() }
             } message: {
                 Text((avatarActionError ?? session.avatarError)?.userMessage ?? loc(.errorTryAgain))
+            }
+            .sheet(isPresented: $showsModeration) {
+                ModeratorReviewView(repository: moderation)
             }
             .sheet(isPresented: $showsSettings) {
                 SettingsView(
@@ -316,7 +339,7 @@ struct LibraryView: View {
         case .loaded(let items):
             let visibleItems = filtered(items)
             VStack(alignment: .leading, spacing: 24) {
-                if let featured = visibleItems.first {
+                if let featured = visibleItems.first(where: { $0.audioURL != nil }) {
                     LibraryHero(item: featured) {
                         Task { await player.openPlayer(featured, sequence: visibleItems, source: .library) }
                     }
@@ -487,19 +510,23 @@ private struct LibraryRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.displayTitle).font(.headline).lineLimit(1)
                 Text(item.locationDisplay).font(.subheadline).foregroundStyle(SoundscapeTheme.secondaryInk).lineLimit(1)
-                Text("\(durationText)  ·  \(item.isPublic ? loc(.libraryPublicLabel) : loc(.libraryPrivateLabel))")
+                Text("\(durationText)  ·  \(statusLabel)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(SoundscapeTheme.secondaryInk)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: play) {
-                Image(systemName: "play")
-                    .font(.system(size: 20))
-                    .frame(width: 44, height: 44)
+            if item.audioURL != nil {
+                Button(action: play) {
+                    Image(systemName: "play")
+                        .font(.system(size: 20))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             Menu {
-                Button(item.isPublic ? loc(.libraryMakePrivate) : loc(.libraryMakePublic), action: visibility)
+                if item.moderationStatus != "rejected" && item.moderationStatus != "removed" {
+                    Button(item.isPublic ? loc(.libraryMakePrivate) : loc(.libraryMakePublic), action: visibility)
+                }
                 Button(loc(.libraryDelete), role: .destructive, action: delete)
             } label: {
                 Image(systemName: "ellipsis.vertical").frame(width: 32, height: 44)
@@ -508,6 +535,15 @@ private struct LibraryRow: View {
         .foregroundStyle(SoundscapeTheme.ink)
         .padding(.vertical, 12)
         .environment(\.locale, Locale(identifier: locale.rawValue))
+    }
+
+    private var statusLabel: String {
+        switch item.moderationStatus {
+        case "pending": loc(.moderationPending)
+        case "rejected": loc(.moderationReject)
+        case "removed": loc(.moderationRemove)
+        default: item.isPublic ? loc(.libraryPublicLabel) : loc(.libraryPrivateLabel)
+        }
     }
 
     private var durationText: String {

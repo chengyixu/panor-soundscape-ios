@@ -206,6 +206,9 @@ struct TurntablePlayerView: View {
     @Environment(LocaleManager.self) private var localeManager
     let soundscape: Soundscape
     let player: AudioPlayerController
+    let moderation: any ModerationRepository
+    let session: IdentitySession
+    let onCreatorBlocked: () -> Void
 
     @State private var interactionMode: TurntableInteraction.Mode?
     @State private var startsParked = false
@@ -226,6 +229,10 @@ struct TurntablePlayerView: View {
     @State private var candidates: [Int: Soundscape] = [:]
     @State private var detailsDetent: PresentationDetent = .fraction(0.62)
     @State private var selectedFeedback: PlayerFeedbackChoice?
+    @State private var safetyNotice: String?
+    @State private var safetyError: AppError?
+    @State private var showsIdentityForBlock = false
+    @State private var confirmsBlock = false
     @GestureState private var gestureActive = false
 
     var body: some View {
@@ -351,6 +358,10 @@ struct TurntablePlayerView: View {
         }
         .sheet(isPresented: $showsDetails) {
             detailsSheet
+        }
+        .sheet(isPresented: $showsIdentityForBlock) { IdentitySheet(session: session) }
+        .confirmationDialog(loc(.moderationBlock), isPresented: $confirmsBlock) {
+            Button(loc(.moderationBlock), role: .destructive) { Task { await blockCurrentCreator() } }
         }
         .onChange(of: showsTrackList) { _, isVisible in
             if isVisible { player.recordVisibleRecommendationWindow() }
@@ -827,6 +838,19 @@ struct TurntablePlayerView: View {
                     }
                     .padding(18)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    if let safetyNotice {
+                        Text(safetyNotice)
+                            .foregroundStyle(SoundscapeTheme.playerInk)
+                            .accessibilityIdentifier("moderation-feedback")
+                    }
+                    if let safetyError {
+                        Text(safetyError.userMessage)
+                            .foregroundStyle(SoundscapeTheme.playerInk)
+                    }
+                    if soundscape.ownerID != session.user?.id {
+                        safetyActions
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, SoundscapeTheme.screenPadding)
@@ -868,6 +892,50 @@ struct TurntablePlayerView: View {
         dynamicTypeSize.isAccessibilitySize
             ? [GridItem(.flexible())]
             : [GridItem(.flexible()), GridItem(.flexible())]
+    }
+
+    private var safetyActions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Menu {
+                Button(loc(.moderationHarassment)) { Task { await sendReport(.moderationHarassment) } }
+                Button(loc(.moderationHate)) { Task { await sendReport(.moderationHate) } }
+                Button(loc(.moderationCopyright)) { Task { await sendReport(.moderationCopyright) } }
+                Button(loc(.moderationOther)) { Task { await sendReport(.moderationOther) } }
+            } label: {
+                Label(loc(.moderationReport), systemImage: "flag")
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            }
+            .accessibilityIdentifier("report-soundscape")
+            Button {
+                guard session.user != nil else { showsIdentityForBlock = true; return }
+                confirmsBlock = true
+            } label: {
+                Label(loc(.moderationBlock), systemImage: "person.crop.circle.badge.xmark")
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            }
+            .accessibilityIdentifier("block-creator")
+        }
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(SoundscapeTheme.playerInk)
+        .padding(18)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func blockCurrentCreator() async {
+        do {
+            try await moderation.block(creatorID: soundscape.ownerID)
+            player.removeCreator(soundscape.ownerID)
+            onCreatorBlocked()
+        } catch let appError as AppError { safetyError = appError }
+        catch { safetyError = .transport(String(describing: type(of: error))) }
+    }
+
+    private func sendReport(_ reason: SoundscapeLocale) async {
+        do {
+            try await moderation.report(soundscapeID: soundscape.id, reason: loc(reason))
+            safetyNotice = loc(.moderationReported)
+        } catch let appError as AppError { safetyError = appError }
+        catch { safetyError = .transport(String(describing: type(of: error))) }
     }
 
     private var feedbackButtons: some View {

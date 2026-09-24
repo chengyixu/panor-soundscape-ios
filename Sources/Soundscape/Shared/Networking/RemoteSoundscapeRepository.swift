@@ -15,7 +15,8 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
         let rows: [SoundscapeDTO] = try await client.request(
             baseURL: environment.soundscapeAPIBaseURL,
             path: SoundscapeAPIPath.soundscapes.value,
-            query: query
+            query: query,
+            optionalAuthentication: true
         )
         return rows.map { $0.domain(environment: environment) }
     }
@@ -23,7 +24,8 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
     func rankings(policy: RepositoryReadPolicy) async throws -> [RankingLane] {
         let rows: [RankingLaneDTO] = try await client.request(
             baseURL: environment.soundscapeAPIBaseURL,
-            path: SoundscapeAPIPath.rankings.value
+            path: SoundscapeAPIPath.rankings.value,
+            optionalAuthentication: true
         )
         return rows.map { lane in
             RankingLane(category: lane.category, items: lane.items.map { $0.domain(environment: environment) })
@@ -90,7 +92,20 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
             path: SoundscapeAPIPath.aiCover.value,
             method: "POST",
             body: request,
+            authenticated: true,
             timeoutInterval: 180
+        )
+    }
+
+    func previewStagedCover(path: String) async throws -> Data {
+        guard let name = path.split(separator: "/").last,
+              name.range(of: "^[a-f0-9]{32}\\.png$", options: .regularExpression) != nil else {
+            throw AppError.invalidRequest(loc(.errorInvalidParams))
+        }
+        return try await client.download(
+            baseURL: environment.soundscapeAPIBaseURL,
+            path: SoundscapeAPIPath.stagedCoverName(String(name)).value,
+            maximumBytes: MediaConstraints.maximumCoverBytes
         )
     }
 
@@ -100,7 +115,8 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
             baseURL: environment.soundscapeAPIBaseURL,
             path: SoundscapeAPIPath.play(id).value,
             method: "POST",
-            body: Request(listened_sec: listenedSeconds)
+            body: Request(listened_sec: listenedSeconds),
+            optionalAuthentication: true
         )
     }
 

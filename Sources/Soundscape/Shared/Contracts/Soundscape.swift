@@ -18,6 +18,7 @@ struct Soundscape: Codable, Identifiable, Hashable, Sendable {
     let memoryPresent: Double
     let durationSeconds: Int
     let isPublic: Bool
+    var moderationStatus: String = "approved"
     let playCount: Int
     let fullPlayCount: Int
     let saveCount: Int
@@ -121,6 +122,7 @@ struct SoundscapeDTO: Decodable, Sendable {
     let tagMemoryPresent: Double?
     let durationSec: Int?
     let isPublic: Int?
+    let moderationStatus: String?
     let playCount: Int?
     let fullPlayCount: Int?
     let saveCount: Int?
@@ -140,6 +142,7 @@ struct SoundscapeDTO: Decodable, Sendable {
         case tagMemoryPresent = "tag_memory_present"
         case durationSec = "duration_sec"
         case isPublic = "is_public"
+        case moderationStatus = "moderation_status"
         case playCount = "play_count"
         case fullPlayCount = "full_play_count"
         case saveCount = "save_count"
@@ -170,6 +173,7 @@ struct SoundscapeDTO: Decodable, Sendable {
             saveCount: saveCount ?? 0,
             createdAt: createdAt ?? ""
         )
+        value.moderationStatus = moderationStatus ?? "approved"
         value.world = world?.domain(environment: environment) ?? .pending
         return value
     }

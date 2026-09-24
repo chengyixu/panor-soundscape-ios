@@ -32,7 +32,18 @@ enum SoundscapeAPIPath: Sendable, Equatable {
     case rankings
     case aiTitle
     case aiCover
+    case stagedCoverName(String)
     case feedback
+    case report(Int)
+    case blockCreator(String)
+    case moderatorAccess
+    case pendingModeration
+    case moderatorAudio(Int)
+    case moderatorCover(Int)
+    case moderationReports
+    case resolveReport(Int)
+    case moderationDecision(Int, String)
+    case suspendCreator(String)
 
     var value: String {
         switch self {
@@ -47,7 +58,18 @@ enum SoundscapeAPIPath: Sendable, Equatable {
         case .rankings: "/rankings"
         case .aiTitle: "/ai/title"
         case .aiCover: "/ai/cover"
+        case .stagedCoverName(let name): "/staged-covers/\(name)"
         case .feedback: "/feedback"
+        case .report(let id): "/soundscapes/\(id)/report"
+        case .blockCreator(let id): "/users/\(id)/block"
+        case .moderatorAccess: "/moderation/access"
+        case .pendingModeration: "/moderation/pending"
+        case .moderatorAudio(let id): "/moderation/soundscapes/\(id)/media/audio"
+        case .moderatorCover(let id): "/moderation/soundscapes/\(id)/media/cover"
+        case .moderationReports: "/moderation/reports"
+        case .resolveReport(let id): "/moderation/reports/\(id)/resolve"
+        case .moderationDecision(let id, let action): "/moderation/soundscapes/\(id)/\(action)"
+        case .suspendCreator(let id): "/moderation/users/\(id)/suspend"
         }
     }
 }

@@ -263,7 +263,7 @@ final class APIClientContractTests: XCTestCase {
     func testCoverGenerationUsesLongRunningRequestTimeout() async throws {
         let body = Data("{\"cover_url\":\"/soundscape/uploads/covers/generated.png\",\"cover_is_ai\":1}".utf8)
         let transport = StubHTTPTransport(stubs: [.init(data: body, status: 200)])
-        let client = APIClient(transport: transport, tokenStore: InMemoryTokenStore())
+        let client = APIClient(transport: transport, tokenStore: InMemoryTokenStore(token: "test-token"))
         let repository = RemoteSoundscapeRepository(environment: .production, client: client)
 
         _ = try await repository.suggestCover(CoverSuggestionRequest(title: "雨巷", locationName: "香港", mood: "地方"))

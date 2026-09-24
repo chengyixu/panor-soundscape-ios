@@ -6,6 +6,7 @@ import Observation
 final class AppContainer {
     let soundscapes: any SoundscapeRepository
     let identity: any IdentityRepository
+    let moderation: any ModerationRepository
     let recorder: any RecordingService
     let location: any LocationProviding
     let matching: any ResonanceMatching
@@ -16,6 +17,7 @@ final class AppContainer {
     init(
         soundscapes: any SoundscapeRepository,
         identity: any IdentityRepository,
+        moderation: any ModerationRepository,
         recorder: any RecordingService,
         location: any LocationProviding,
         matching: any ResonanceMatching,
@@ -25,6 +27,7 @@ final class AppContainer {
     ) {
         self.soundscapes = soundscapes
         self.identity = identity
+        self.moderation = moderation
         self.recorder = recorder
         self.location = location
         self.matching = matching
@@ -41,10 +44,12 @@ final class AppContainer {
         let transport = URLSessionTransport()
         let client = APIClient(transport: transport, tokenStore: tokenStore)
         let remoteSoundscapes = RemoteSoundscapeRepository(environment: environment, client: client)
-        let soundscapes = CachedSoundscapeRepository(
-            upstream: remoteSoundscapes,
-            cache: DiskPublicSoundscapeCache()
-        )
+        // The pre-moderation release stored public UGC on disk. Never read it
+        // after adding server-side takedowns and viewer-specific blocks.
+        let oldSnapshot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Soundscape/public-content-v1.json")
+        try? FileManager.default.removeItem(at: oldSnapshot)
+        let soundscapes = CachedSoundscapeRepository(upstream: remoteSoundscapes)
         let identity = PanorIdentityRepository(environment: environment, client: client, tokenStore: tokenStore)
         let session = IdentitySession(repository: identity, avatarStore: DiskProfileAvatarStore())
         let matching = LocalResonanceMatchingService(
@@ -56,6 +61,7 @@ final class AppContainer {
         return AppContainer(
             soundscapes: soundscapes,
             identity: identity,
+            moderation: RemoteModerationRepository(environment: environment, client: client),
             recorder: AVRecordingService(),
             location: OneShotLocationProvider(),
             matching: matching,

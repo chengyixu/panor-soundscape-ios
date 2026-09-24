@@ -41,7 +41,7 @@ final class DiscoveryMapViewModelTests: XCTestCase {
         }
     }
 
-    func testRefreshFailureKeepsExistingMapMarkers() async {
+    func testRefreshFailureRemovesUnverifiedMapMarkers() async {
         let repository = StubSoundscapeRepository()
         await repository.setExploreResult(.success([TestFixtures.soundscape]))
         let model = DiscoveryMapViewModel(repository: repository)
@@ -50,7 +50,7 @@ final class DiscoveryMapViewModelTests: XCTestCase {
 
         await model.load(forceRefresh: true)
 
-        guard case .loaded(let items) = model.state else { return XCTFail("Expected cached markers") }
-        XCTAssertEqual(items, [TestFixtures.soundscape])
+        guard case .failed = model.state else { return XCTFail("Unverified markers must not remain visible") }
+        XCTAssertNil(model.selectedID)
     }
 }

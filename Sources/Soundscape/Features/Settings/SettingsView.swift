@@ -39,6 +39,10 @@ struct SettingsView: View {
                     NavigationLink { termsOfService } label: {
                         Label(localeManager.string(.settingsTermsOfService), systemImage: "doc.text")
                     }
+                    Link(destination: URL(string: "mailto:support@panor.tech")!) {
+                        Label(localeManager.string(.moderationContact), systemImage: "envelope")
+                    }
+                    .accessibilityIdentifier("contact-support")
                 }
 
                 Section(localeManager.string(.settingsSectionForYou)) {

@@ -210,10 +210,16 @@ struct CreateSoundscapeView: View {
 
     private func published(_ soundscape: Soundscape) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            RemoteCover(url: soundscape.coverURL, category: soundscape.category)
+            Group {
+                if soundscape.moderationStatus == "pending", let data = model.stagedCoverData, let image = UIImage(data: data) {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    RemoteCover(url: soundscape.coverURL, category: soundscape.category)
+                }
+            }
                 .frame(height: 310)
                 .clipShape(RoundedRectangle(cornerRadius: SoundscapeTheme.featureRadius, style: .continuous))
-            SoundscapeStatusLabel(title: loc(.createPublished), systemImage: "checkmark.circle.fill")
+            SoundscapeStatusLabel(title: soundscape.moderationStatus == "pending" ? loc(.moderationAwaitingApproval) : loc(.createPublished), systemImage: "checkmark.circle.fill")
             Text(soundscape.displayTitle).font(SoundscapeTheme.featureTitleFont)
             Text(soundscape.locationDisplay).foregroundStyle(SoundscapeTheme.secondaryInk)
             Button(loc(.createRecordAnother)) { Task { await model.reset() } }.buttonStyle(PrimaryActionStyle())
@@ -234,8 +240,8 @@ struct CreateSoundscapeView: View {
     @ViewBuilder private var coverPreview: some View {
         if let file = model.uploadedCover, let image = UIImage(data: file.data) {
             Image(uiImage: image).resizable().scaledToFill().frame(width: 112, height: 112).clipShape(RoundedRectangle(cornerRadius: 18))
-        } else if let path = model.generatedCoverPath {
-            RemoteCover(url: APIEnvironment.production.mediaURL(for: path), category: model.category, isAI: true)
+        } else if model.generatedCoverPath != nil, let data = model.stagedCoverData, let image = UIImage(data: data) {
+            Image(uiImage: image).resizable().scaledToFill()
                 .frame(width: 112, height: 112).clipShape(RoundedRectangle(cornerRadius: 18))
                 .overlay(alignment: .bottomTrailing) {
                     Text(loc(.coverAIBadge)).font(.caption2.bold()).padding(6).background(.ultraThinMaterial).clipShape(Capsule()).padding(6)

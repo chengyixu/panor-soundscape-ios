@@ -235,6 +235,15 @@ final class SoundscapeUITests: XCTestCase {
         capture("Soundscape-Turntable")
     }
 
+    func testPublicPlayerExposesReportAndBlockActions() {
+        let app = makeApp()
+        app.launch()
+        openTurntable(in: app)
+        app.buttons["turntable-metadata"].tap()
+        XCTAssertTrue(app.buttons["report-soundscape"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["block-creator"].waitForExistence(timeout: 5))
+    }
+
     func testPlayerPlaybackModeMenuSwitchesBetweenStandardModes() {
         let app = makeApp()
         app.launch()

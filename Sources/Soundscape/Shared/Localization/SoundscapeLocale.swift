@@ -111,6 +111,27 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerResonates
     case playerNotNow
     case playerLessLikeThis
+    case moderationQueue
+    case moderationContact
+    case moderationPending
+    case moderationEmpty
+    case moderationListen
+    case moderationPreviewCover
+    case moderationApprove
+    case moderationReject
+    case moderationReports
+    case moderationRemove
+    case moderationResolve
+    case moderationSuspend
+    case moderationReport
+    case moderationBlock
+    case moderationReported
+    case moderationBlocked
+    case moderationHarassment
+    case moderationHate
+    case moderationCopyright
+    case moderationOther
+    case moderationAwaitingApproval
 
     // MARK: - Create
     case createEyebrow
@@ -440,6 +461,27 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerResonates: "有共鸣"
         case .playerNotNow: "不是现在"
         case .playerLessLikeThis: "少推荐这类"
+        case .moderationQueue: "内容审核"
+        case .moderationContact: "联系支持：support@panor.tech"
+        case .moderationPending: "待审核声音"
+        case .moderationEmpty: "暂无待审核内容"
+        case .moderationListen: "试听"
+        case .moderationPreviewCover: "查看封面"
+        case .moderationApprove: "通过"
+        case .moderationReject: "拒绝"
+        case .moderationReports: "用户举报"
+        case .moderationRemove: "下架"
+        case .moderationResolve: "已处理"
+        case .moderationSuspend: "停用发布权限"
+        case .moderationReport: "举报声音"
+        case .moderationBlock: "屏蔽作者"
+        case .moderationReported: "已收到举报"
+        case .moderationBlocked: "已屏蔽作者"
+        case .moderationHarassment: "骚扰或辱骂"
+        case .moderationHate: "仇恨言论"
+        case .moderationCopyright: "侵权内容"
+        case .moderationOther: "其他不当内容"
+        case .moderationAwaitingApproval: "已提交，等待审核后公开"
         case .createEyebrow: "公开发布"
         case .createTitle: "发布声景"
         case .createDetail: "录音、导入、AI 增强之后公开发布，让你的声音出现在探索页面和地图上。"
@@ -747,6 +789,27 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerResonates: "Resonates"
         case .playerNotNow: "Not now"
         case .playerLessLikeThis: "Less like this"
+        case .moderationQueue: "Content review"
+        case .moderationContact: "Contact support: support@panor.tech"
+        case .moderationPending: "Awaiting approval"
+        case .moderationEmpty: "No pending recordings"
+        case .moderationListen: "Listen"
+        case .moderationPreviewCover: "Review cover"
+        case .moderationApprove: "Approve"
+        case .moderationReject: "Reject"
+        case .moderationReports: "Reports"
+        case .moderationRemove: "Remove"
+        case .moderationResolve: "Resolved"
+        case .moderationSuspend: "Suspend creator"
+        case .moderationReport: "Report recording"
+        case .moderationBlock: "Block creator"
+        case .moderationReported: "Report received"
+        case .moderationBlocked: "Creator blocked"
+        case .moderationHarassment: "Harassment or bullying"
+        case .moderationHate: "Hate speech"
+        case .moderationCopyright: "Copyright violation"
+        case .moderationOther: "Other objectionable content"
+        case .moderationAwaitingApproval: "Submitted for review before publication"
         case .createEyebrow: "Public Contribution"
         case .createTitle: "Publish Soundscape"
         case .createDetail: "Record, import, enhance with AI, then publish. Your sound will appear in Explore and on the map."
@@ -1054,6 +1117,27 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerResonates: "有共鳴"
         case .playerNotNow: "不是現在"
         case .playerLessLikeThis: "少推薦這類"
+        case .moderationQueue: "內容審核"
+        case .moderationContact: "聯絡支援：support@panor.tech"
+        case .moderationPending: "待審核聲音"
+        case .moderationEmpty: "暫無待審核內容"
+        case .moderationListen: "試聽"
+        case .moderationPreviewCover: "查看封面"
+        case .moderationApprove: "通過"
+        case .moderationReject: "拒絕"
+        case .moderationReports: "用戶檢舉"
+        case .moderationRemove: "下架"
+        case .moderationResolve: "已處理"
+        case .moderationSuspend: "停用發佈權限"
+        case .moderationReport: "檢舉聲音"
+        case .moderationBlock: "封鎖作者"
+        case .moderationReported: "已收到檢舉"
+        case .moderationBlocked: "已封鎖作者"
+        case .moderationHarassment: "騷擾或辱罵"
+        case .moderationHate: "仇恨言論"
+        case .moderationCopyright: "侵權內容"
+        case .moderationOther: "其他不當內容"
+        case .moderationAwaitingApproval: "已提交，等待審核後公開"
         case .createEyebrow: "公開發佈"
         case .createTitle: "發佈聲景"
         case .createDetail: "錄音、匯入、AI 增強之後公開發佈，讓你的聲音出現在探索頁面和地圖上。"
