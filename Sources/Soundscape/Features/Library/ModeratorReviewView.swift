@@ -11,7 +11,7 @@ struct ModeratorReviewView: View {
     @State private var loading = false
     @State private var error: AppError?
     @State private var preview: AVAudioPlayer?
-    @State private var coverPreview: UIImage?
+    @State private var coverPreview: CoverPreview?
 
     var body: some View {
         NavigationStack {
@@ -66,10 +66,7 @@ struct ModeratorReviewView: View {
             .navigationTitle(loc(.moderationQueue))
             .toolbar { Button(loc(.generalDone)) { preview?.stop(); dismiss() } }
             .task { await load() }
-            .sheet(item: Binding(
-                get: { coverPreview.map(CoverPreview.init) },
-                set: { if $0 == nil { coverPreview = nil } }
-            )) { preview in
+            .sheet(item: $coverPreview) { preview in
                 Image(uiImage: preview.image)
                     .resizable()
                     .scaledToFit()
@@ -117,7 +114,7 @@ struct ModeratorReviewView: View {
         do {
             let data = try await repository.previewCover(soundscapeID: id)
             guard let image = UIImage(data: data) else { throw AppError.decoding }
-            coverPreview = image
+            coverPreview = CoverPreview(id: id, image: image)
         } catch { show(error) }
     }
 
@@ -147,6 +144,6 @@ struct ModeratorReviewView: View {
 }
 
 private struct CoverPreview: Identifiable {
-    let id = UUID()
+    let id: Int
     let image: UIImage
 }
