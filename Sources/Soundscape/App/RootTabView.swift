@@ -160,7 +160,7 @@ struct RootTabView: View {
                 DiscoveryMapView(
                     repository: container.soundscapes,
                     player: container.player,
-                    isActive: selection == .map
+                    isActive: selection == .map && container.player.presentedSoundscape == nil
                 )
             }
 
@@ -183,7 +183,7 @@ struct RootTabView: View {
                     player: container.player,
                     matching: container.matching,
                     intentParser: container.intentParser,
-                    isActive: selection == .me
+                    isActive: selection == .me && container.player.presentedSoundscape == nil
                 )
             }
         }
