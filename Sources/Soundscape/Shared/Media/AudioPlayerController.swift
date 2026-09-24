@@ -481,7 +481,7 @@ final class AudioPlayerController {
     }
 
     func removeCreator(_ creatorID: String) {
-        if current?.ownerID == creatorID { stop() }
+        if current?.ownerID == creatorID || presentedSoundscape?.ownerID == creatorID { stop() }
         availableSoundscapes.removeAll { $0.ownerID == creatorID }
         recommendationStream.removeAll { $0.ownerID == creatorID }
         currentSequenceIndex = current.flatMap { active in
