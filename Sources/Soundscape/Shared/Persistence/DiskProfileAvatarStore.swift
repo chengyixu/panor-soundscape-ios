@@ -15,12 +15,14 @@ actor DiskProfileAvatarStore: ProfileAvatarStore {
         if FileManager.default.fileExists(atPath: url.path) {
             let data = try Data(contentsOf: url)
             let avatar = try JSONDecoder().decode(ProfileAvatar.self, from: data)
-            if case .generated(let index) = avatar, !(0..<ProfileAvatar.generatedCount).contains(index) {
-                throw AppError.decoding
+            if case .generated = avatar {
+                let stable = ProfileAvatar.generated(ProfileAvatar.generatedIndex(for: userID))
+                if avatar != stable { try persist(stable, at: url) }
+                return stable
             }
             return avatar
         }
-        let avatar = ProfileAvatar.generated(Int.random(in: 0..<ProfileAvatar.generatedCount))
+        let avatar = ProfileAvatar.generated(ProfileAvatar.generatedIndex(for: userID))
         try persist(avatar, at: url)
         return avatar
     }

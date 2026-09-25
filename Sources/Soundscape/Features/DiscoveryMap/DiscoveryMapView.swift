@@ -193,7 +193,7 @@ private struct MapSelectionCard: View {
         let locale = localeManager.current
 
         HStack(spacing: 14) {
-            RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI)
+            RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI, avatarSeed: soundscape.id)
                 .saturation(0)
                 .frame(width: 76, height: 76)
                 .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
@@ -207,10 +207,13 @@ private struct MapSelectionCard: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(SoundscapeTheme.ink)
                     .lineLimit(1)
-                Text("\(soundscape.authorDisplay) · \(soundscape.categoryDisplay)")
-                    .font(.caption)
-                    .foregroundStyle(SoundscapeTheme.secondaryInk)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    SoundscapeAvatar(seed: soundscape.ownerID, size: 20)
+                    Text("\(soundscape.authorDisplay) · \(soundscape.categoryDisplay)")
+                        .font(.caption)
+                        .foregroundStyle(SoundscapeTheme.secondaryInk)
+                        .lineLimit(1)
+                }
                 Text("\(soundscape.locationDisplay) · \(soundscape.durationDisplay)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(SoundscapeTheme.secondaryInk)

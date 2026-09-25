@@ -20,6 +20,20 @@ final class ProfileAvatarTests: XCTestCase {
         XCTAssertEqual(creationCount, 1)
     }
 
+    func testGeneratedAvatarIsStableForEveryCreatorOnEveryDevice() async throws {
+        let first = ProfileAvatar.generatedIndex(for: "source:freesound")
+        XCTAssertEqual(first, ProfileAvatar.generatedIndex(for: "source:freesound"))
+        XCTAssertTrue((0..<ProfileAvatar.generatedCount).contains(first))
+        let samples = (0..<20).map { ProfileAvatar.generatedIndex(for: "creator-\($0)") }
+        XCTAssertGreaterThan(Set(samples).count, 4)
+
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DiskProfileAvatarStore(directory: directory)
+        let local = try await store.avatar(for: "source:freesound")
+        XCTAssertEqual(local, .generated(first))
+    }
+
     func testAvatarStorageFailureDoesNotUndoSuccessfulRegistration() async throws {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try Data([1]).write(to: file)

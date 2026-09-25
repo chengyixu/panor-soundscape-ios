@@ -52,7 +52,7 @@ final class CreateSoundscapeViewModel {
     }
 
     var hasCover: Bool { uploadedCover != nil || generatedCoverPath != nil }
-    var canPublish: Bool { audio != nil && hasCover && DraftConstraints.titleIsValid(title) }
+    var canPublish: Bool { audio != nil && DraftConstraints.titleIsValid(title) }
     var isGeneratingMetadata: Bool { phase == .generatingTitle || phase == .generatingCover }
 
     func prepare() async {
@@ -83,8 +83,10 @@ final class CreateSoundscapeViewModel {
     func stopRecording() async {
         do {
             audio = try await recorder.stop()
+            clearDraftArtwork()
+            title = loc(.unnamedSoundscape)
+            description = ""
             phase = .review
-            await enrichAutomatically()
         } catch let error as AppError {
             phase = .failed(error)
         } catch {
@@ -95,13 +97,16 @@ final class CreateSoundscapeViewModel {
     func useImportedAudio(
         data: Data,
         filename: String,
-        contentType: String,
-        generateAutomatically: Bool = true
+        contentType: String
     ) async {
         do {
             audio = try MediaConstraints.audio(data: data, filename: filename, contentType: contentType)
+            clearDraftArtwork()
+            title = URL(fileURLWithPath: filename).deletingPathExtension().lastPathComponent
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if title.isEmpty { title = loc(.unnamedSoundscape) }
+            description = ""
             phase = .review
-            if generateAutomatically { await enrichAutomatically() }
         } catch let error as AppError {
             phase = .failed(error)
         } catch {
@@ -130,11 +135,9 @@ final class CreateSoundscapeViewModel {
             generationError = nil
             phase = .review
         } catch let error as AppError {
-            generationError = error
-            phase = .review
+            finishTitleFailure(error)
         } catch {
-            generationError = .transport(String(describing: type(of: error)))
-            phase = .review
+            finishTitleFailure(.transport(String(describing: type(of: error))))
         }
     }
 
@@ -156,45 +159,13 @@ final class CreateSoundscapeViewModel {
         }
     }
 
-    func enrichAutomatically() async {
-        if !hasPrepared { await prepare() }
-        generationError = nil
-        phase = .generatingTitle
-
-        do {
-            let suggestion = try await repository.suggestTitle(titleRequest)
-            title = suggestion.title
-            description = suggestion.description
-        } catch let error as AppError {
-            finishTitleFailure(error)
-            return
-        } catch {
-            finishTitleFailure(.transport(String(describing: type(of: error))))
-            return
-        }
-
-        phase = .generatingCover
-        do {
-            let suggestion = try await repository.suggestCover(coverRequest)
-            stagedCoverData = try await repository.previewStagedCover(path: suggestion.coverURL)
-            generatedCoverPath = suggestion.coverURL
-            uploadedCover = nil
-            generationError = nil
-        } catch let error as AppError {
-            generationError = error
-        } catch {
-            generationError = .transport(String(describing: type(of: error)))
-        }
-        phase = .review
-    }
-
     func publish() async {
         guard phase != .publishing else { return }
         guard let audio else { phase = .failed(.invalidRequest(loc(.errorNoAudio))); return }
-        let cover: DraftCover
+        let cover: DraftCover?
         if let uploadedCover { cover = .upload(uploadedCover) }
         else if let generatedCoverPath { cover = .generated(path: generatedCoverPath) }
-        else { phase = .failed(.invalidRequest(loc(.errorCoverEmpty))); return }
+        else { cover = nil }
 
         do {
             try DraftConstraints.validate(title: title, description: description, locationName: place?.name ?? "")
@@ -258,9 +229,16 @@ final class CreateSoundscapeViewModel {
         CoverSuggestionRequest(title: title, locationName: place?.name ?? "", mood: category)
     }
 
+    private func clearDraftArtwork() {
+        uploadedCover = nil
+        generatedCoverPath = nil
+        stagedCoverData = nil
+        generationError = nil
+    }
+
     private func finishTitleFailure(_ error: AppError) {
-        title = ""
-        description = ""
+        // Suggestions are optional. Never erase the user's recording or its
+        // editable filename-derived title when the upstream AI is rate-limited.
         generationError = error
         phase = .review
     }

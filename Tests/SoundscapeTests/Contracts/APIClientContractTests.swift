@@ -260,6 +260,26 @@ final class APIClientContractTests: XCTestCase {
         XCTAssertTrue(requests.isEmpty)
     }
 
+    func testCreateUploadsSoundWithoutRequiringCoverWhenAISuggestionIsUnavailable() async throws {
+        let transport = StubHTTPTransport(stubs: [.init(data: Data(#"{"id":667,"title":"Rain"}"#.utf8), status: 200)])
+        let client = APIClient(transport: transport, tokenStore: InMemoryTokenStore(token: "creator-session"))
+        let repository = RemoteSoundscapeRepository(environment: .production, client: client)
+        _ = try await repository.create(CreateSoundscapeDraft(
+            audio: MediaFile(data: Data([1, 2, 3]), filename: "rain.wav", contentType: "audio/wav"),
+            cover: nil, title: "Rain", description: "", latitude: nil, longitude: nil,
+            locationName: "", category: "自然", promptText: "", personalSocial: 0.5,
+            memoryPresent: 0.5, isPublic: true
+        ))
+        let requests = await transport.requests
+        let request = try XCTUnwrap(requests.first)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer creator-session")
+        let body = String(decoding: try XCTUnwrap(request.httpBody), as: UTF8.self)
+        XCTAssertTrue(body.contains("name=\"audio\""))
+        XCTAssertTrue(body.contains("name=\"title\""))
+        XCTAssertFalse(body.contains("name=\"cover\""))
+        XCTAssertFalse(body.contains("name=\"cover_url\""))
+    }
+
     func testCoverGenerationUsesLongRunningRequestTimeout() async throws {
         let body = Data("{\"cover_url\":\"/soundscape/uploads/covers/generated.png\",\"cover_is_ai\":1}".utf8)
         let transport = StubHTTPTransport(stubs: [.init(data: body, status: 200)])

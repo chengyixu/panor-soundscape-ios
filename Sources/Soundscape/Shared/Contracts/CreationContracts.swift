@@ -120,7 +120,7 @@ enum DraftCover: Sendable, Equatable {
 
 struct CreateSoundscapeDraft: Sendable, Equatable {
     let audio: MediaFile
-    let cover: DraftCover
+    let cover: DraftCover?
     let title: String
     let description: String
     let latitude: Double?

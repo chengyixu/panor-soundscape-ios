@@ -28,7 +28,9 @@ struct Soundscape: Codable, Identifiable, Hashable, Sendable {
     var hasCoordinate: Bool { latitude != nil && longitude != nil }
 
     var displayTitle: String {
-        title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? loc(.unnamedSoundscape) : title
+        let cleaned = title.replacingOccurrences(of: "(?i)\\.wav", with: " ", options: .regularExpression)
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return cleaned.isEmpty ? loc(.unnamedSoundscape) : cleaned
     }
 
     var locationDisplay: String {

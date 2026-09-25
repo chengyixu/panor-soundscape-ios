@@ -6,6 +6,7 @@ struct RemoteCover: View {
     let url: URL?
     let category: String
     var isAI = false
+    let avatarSeed: Int
 
     var body: some View {
         let locale = localeManager.current
@@ -20,15 +21,15 @@ struct RemoteCover: View {
                             .scaledToFill()
                             .overlay(alignment: .bottom) { aiDisclosure }
                     case .failure:
-                        unavailableCover(systemImage: "exclamationmark", label: loc(.coverLoadFailed))
+                        designedFallback
                     case .empty:
                         loadingCover
                     @unknown default:
-                        unavailableCover(systemImage: "exclamationmark", label: loc(.coverLoadFailed))
+                        designedFallback
                     }
                 }
             } else {
-                unavailableCover(systemImage: "photo", label: loc(.coverNoCover))
+                designedFallback
             }
         }
         .clipped()
@@ -58,13 +59,15 @@ struct RemoteCover: View {
         .accessibilityLabel(loc(.coverLoading))
     }
 
-    private func unavailableCover(systemImage: String, label: String) -> some View {
-        ZStack {
-            SoundscapeTheme.paperDeep
-            Image(systemName: systemImage)
-                .font(.system(size: 22, weight: .light))
-                .foregroundStyle(SoundscapeTheme.secondaryInk)
+    private var designedFallback: some View {
+        GeometryReader { geometry in
+            ZStack {
+                SoundscapeTheme.paperDeep
+                SoundscapeAvatar(seed: "soundscape:\(avatarSeed)", size: max(geometry.size.width, geometry.size.height))
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            }
         }
-        .accessibilityLabel(label)
+        .accessibilityLabel(loc(.coverDesignedArtwork))
+        .accessibilityIdentifier("soundscape-artwork-\(avatarSeed)")
     }
 }

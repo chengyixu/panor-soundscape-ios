@@ -2,6 +2,22 @@ import XCTest
 @testable import Soundscape
 
 final class SoundscapeContractTests: XCTestCase {
+    func testFileExtensionIsNotPartOfDisplayedVoiceName() {
+        var item = TestFixtures.soundscape
+        item = Soundscape(
+            id: item.id, ownerID: item.ownerID, authorName: item.authorName,
+            title: "Rain.wav on metal roof.WAV", description: item.description,
+            audioURL: item.audioURL, coverURL: item.coverURL, coverIsAI: item.coverIsAI,
+            latitude: item.latitude, longitude: item.longitude, locationName: item.locationName,
+            category: item.category, promptText: item.promptText,
+            personalSocial: item.personalSocial, memoryPresent: item.memoryPresent,
+            durationSeconds: item.durationSeconds, isPublic: item.isPublic,
+            playCount: item.playCount, fullPlayCount: item.fullPlayCount,
+            saveCount: item.saveCount, createdAt: item.createdAt
+        )
+        XCTAssertEqual(item.displayTitle, "Rain on metal roof")
+    }
+
     func testDecodesProductionShapeAndResolvesRelativeMediaURLs() throws {
         let json = """
         {"id":17,"user_id":"2","author_name":"wilsonxu","title":"九巷风藏旧语声","description":"声响里裹着旧念。","audio_url":"/soundscape/uploads/audio/sample.m4a","cover_url":"/soundscape/uploads/covers/sample.png","cover_is_ai":1,"lat":22.579,"lng":113.861,"location_name":"盐田新一村九巷","category":"地方","prompt_text":"录下一段声音","tag_personal_social":0.5,"tag_memory_present":0.5,"duration_sec":699,"is_public":1,"play_count":2,"full_play_count":0,"save_count":0,"created_at":"2026-07-17 13:51:30","world":{"status":"ready","format":"spz","provenance":"ai_gaussian","updated_at":"2026-07-21 20:00:00","assets":{"preview":{"url":"/soundscape/uploads/worlds/17/preview-a.spz","format":"spz","sha256":"aaa","bytes":100},"standard":{"url":"/soundscape/uploads/worlds/17/standard-b.spz","format":"spz","sha256":"bbb","bytes":200}}}}

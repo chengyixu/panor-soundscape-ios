@@ -206,12 +206,26 @@ else
   pass 'top-aligned Discovery Map root'
 fi
 
-if rg -n 'Button\("获取位置"|await model\.(locate|suggestTitle|suggestCover)\(' Sources/Soundscape/Features/Create/CreateSoundscapeView.swift >/dev/null; then
-  fail 'Create flow must acquire location and generate AI metadata automatically'
-elif ! rg -q 'createThinking' Sources/Soundscape/Features/Create/CreateSoundscapeView.swift || ! rg -q '\.task\(id: isActive\)' Sources/Soundscape/Features/Create/CreateSoundscapeView.swift; then
-  fail 'Create flow must expose an explicit AI thinking state'
+if rg -n 'libraryAvatarLocalOnly|Choose a photo; your avatar' Sources/Soundscape >/dev/null; then
+  fail 'Me must not show avatar instructions'
+elif ! rg -q 'generatedIndex\(for userID:' Sources/Soundscape/Shared/Contracts/ProfileAvatar.swift || \
+     ! rg -q 'SoundscapeAvatar\(seed: soundscape.ownerID' Sources/Soundscape/Features/Explore/ExploreView.swift; then
+  fail 'public creators need one consistent generated avatar contract'
 else
-  pass 'automatic Create enrichment flow'
+  pass 'consistent creator avatars without instructional copy'
+fi
+
+if rg -n 'await enrichAutomatically\(' Sources/Soundscape/Features/Create/CreateSoundscapeViewModel.swift >/dev/null; then
+  fail 'Create must not require a rate-limited AI suggestion before editing'
+elif ! rg -q 'func suggestTitle\(' Sources/Soundscape/Features/Create/CreateSoundscapeViewModel.swift || \
+     ! rg -q 'func suggestCover\(' Sources/Soundscape/Features/Create/CreateSoundscapeViewModel.swift || \
+     ! rg -q '\.task\(id: isActive\)' Sources/Soundscape/Features/Create/CreateSoundscapeView.swift; then
+  fail 'Create must keep explicit optional AI suggestions and location preparation'
+elif ! rg -q 'let cover: DraftCover?' Sources/Soundscape/Shared/Contracts/CreationContracts.swift || \
+     ! rg -q 'case nil: break' Sources/Soundscape/Shared/Networking/RemoteSoundscapeRepository.swift; then
+  fail 'Create cannot require a generated cover'
+else
+  pass 'optional Create enrichment flow'
 fi
 
 if ! rg -q 'openPlayer' Sources/Soundscape/Features/Explore/ExploreView.swift || \

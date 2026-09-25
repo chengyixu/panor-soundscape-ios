@@ -235,6 +235,20 @@ final class SoundscapeUITests: XCTestCase {
         capture("Soundscape-Turntable")
     }
 
+    func testShareDraftIsEditableWithoutAIOrArtwork() {
+        let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SHARE_DRAFT"] = "1"
+        app.launch()
+        app.buttons["tab-contribute"].tap()
+        let title = app.textFields["share-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10))
+        XCTAssertEqual(title.value as? String, "Rain at the Pier")
+        XCTAssertTrue(app.buttons["试试智能标题"].exists)
+        XCTAssertFalse(app.staticTexts["暂时无法生成标题和描述，请稍后重试或手动填写。"].exists)
+        XCTAssertTrue(app.staticTexts["封面可选 · 稍后也能完成"].exists)
+        capture("Soundscape-Share-Review")
+    }
+
     func testPublicPlayerExposesReportAndBlockActions() {
         let app = makeApp()
         app.launch()

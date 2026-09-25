@@ -293,9 +293,16 @@ The native interaction contract was updated on 2026-09-13. This supersedes the e
 ## Profile Avatar
 
 - The Me profile avatar opens the system photo picker for a signed-in account; signed-out taps lead to sign-in.
-- The first sign-in on an installation chooses one of eight monochrome Soundscape symbols at random and persists that choice per account. Subsequent launches and account switches reuse the same symbol or chosen photo.
+- Every creator and every soundscape without custom artwork receives a consistent generated visual: 32 deterministic variations of the same Soundscape wave motif, derived from the stable creator ID or soundscape ID. Variants do not change between devices or launches. The chosen profile photo, if any, replaces only that account's locally displayed avatar.
 - Selected photos are orientation-corrected, center-cropped to a 256-point square, encoded as bounded opaque JPEG, and written atomically before replacing the visible avatar. A failed or canceled selection leaves the prior avatar untouched.
-- The shared Panor auth service currently has no avatar-write API. Custom avatars and generated defaults are therefore stored **only on this device**, not uploaded or synced. The Me screen states this explicitly. Do not represent a local selection as a server account update.
+- The shared Panor auth service currently has no avatar-write API. Custom photos remain **only on this device** and are never represented as a server-side public photo; generated variants require no storage to remain stable across devices. Me does not display instructional copy about changing avatars.
+
+## Sharing a Soundscape
+
+- Capture uses the same vinyl visual language as playback. After recording or importing audio, the review form immediately has an editable filename-derived title and an optional design-consistent cover; no AI request blocks the flow.
+- Title and artwork suggestions are opt-in. When the upstream AI gateway is rate-limited, a brief inline message leaves the draft editable and publishable without a generated cover.
+- The category and optional resonance sliders sit behind a disclosure; publication intent and the moderator-approval requirement remain visible before submitting.
+- Me has a fifth **Review** filter for authorized moderators, rendered inline with the other four filters rather than as a separate button or modal. Server-side authorization still governs every moderation action.
 
 ## Saved Soundscapes
 

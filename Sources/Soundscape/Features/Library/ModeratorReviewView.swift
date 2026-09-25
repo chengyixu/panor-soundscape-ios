@@ -4,7 +4,6 @@ import SwiftUI
 /// The backend checks moderator membership again on every request; hiding this
 /// view is convenience, never the authorization boundary.
 struct ModeratorReviewView: View {
-    @Environment(\.dismiss) private var dismiss
     let repository: any ModerationRepository
     @State private var pending: [Soundscape] = []
     @State private var reports: [ModerationReport] = []
@@ -14,71 +13,77 @@ struct ModeratorReviewView: View {
     @State private var coverPreview: CoverPreview?
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section(loc(.moderationPending)) {
-                    if pending.isEmpty { Text(loc(.moderationEmpty)) }
-                    ForEach(pending) { item in
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(item.displayTitle).font(.headline)
-                            Text(item.authorDisplay).font(.subheadline)
-                            Text(item.description).font(.footnote)
-                            if item.coverURL != nil {
-                                Button(loc(.moderationPreviewCover)) { Task { await showCover(item.id) } }
-                                    .buttonStyle(.bordered)
-                            }
-                            HStack {
-                                Button(loc(.moderationListen)) { Task { await listen(item) } }
-                                Button(loc(.moderationApprove)) { Task { await decide(item, .approve) } }
-                                Button(loc(.moderationReject), role: .destructive) { Task { await decide(item, .reject) } }
-                            }
-                            .buttonStyle(.bordered)
+        VStack(alignment: .leading, spacing: 28) {
+            reviewSection(loc(.moderationPending)) {
+                if pending.isEmpty { Text(loc(.moderationEmpty)).foregroundStyle(SoundscapeTheme.secondaryInk) }
+                ForEach(pending) { item in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(item.displayTitle).font(.headline)
+                        Text(item.authorDisplay).font(.subheadline)
+                        Text(item.description).font(.footnote)
+                        if item.coverURL != nil {
+                            Button(loc(.moderationPreviewCover)) { Task { await showCover(item.id) } }
+                                .buttonStyle(.bordered)
                         }
-                        .accessibilityIdentifier("moderation-item-\(item.id)")
+                        reviewActions(item)
                     }
-                }
-                Section(loc(.moderationReports)) {
-                    ForEach(reports) { report in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(report.title).font(.headline)
-                            Text(report.reason)
-                            Text(report.created_at).font(.caption)
-                            if report.has_cover {
-                                Button(loc(.moderationPreviewCover)) { Task { await showCover(report.soundscape_id) } }
-                                    .buttonStyle(.bordered)
-                            }
-                            HStack {
-                                Button(loc(.moderationListen)) { Task { await listenReported(report) } }
-                                Button(loc(.moderationRemove), role: .destructive) {
-                                    Task { await removeReported(report) }
-                                }
-                                Button(loc(.moderationResolve)) { Task { await resolve(report) } }
-                                Button(loc(.moderationSuspend), role: .destructive) {
-                                    Task { await suspend(report) }
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    }
+                    .accessibilityIdentifier("moderation-item-\(item.id)")
+                    Divider()
                 }
             }
-            .overlay { if loading { ProgressView() } }
-            .navigationTitle(loc(.moderationQueue))
-            .toolbar { Button(loc(.generalDone)) { preview?.stop(); dismiss() } }
-            .task { await load() }
-            .sheet(item: $coverPreview) { preview in
-                Image(uiImage: preview.image)
-                    .resizable()
-                    .scaledToFit()
-                    .padding(20)
-                    .accessibilityLabel(loc(.moderationPreviewCover))
-            }
-            .alert(loc(.errorGeneric), isPresented: Binding(
-                get: { error != nil }, set: { if !$0 { error = nil } }
-            )) { Button(loc(.generalOK)) { error = nil } } message: {
-                Text(error?.userMessage ?? loc(.errorTryAgain))
+            reviewSection(loc(.moderationReports)) {
+                ForEach(reports) { report in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(report.title).font(.headline)
+                        Text(report.reason)
+                        Text(report.created_at).font(.caption)
+                        if report.has_cover {
+                            Button(loc(.moderationPreviewCover)) { Task { await showCover(report.soundscape_id) } }
+                                .buttonStyle(.bordered)
+                        }
+                        HStack {
+                            Button(loc(.moderationListen)) { Task { await listenReported(report) } }
+                            Button(loc(.moderationRemove), role: .destructive) { Task { await removeReported(report) } }
+                            Button(loc(.moderationResolve)) { Task { await resolve(report) } }
+                        }
+                        .buttonStyle(.bordered)
+                        Button(loc(.moderationSuspend), role: .destructive) { Task { await suspend(report) } }
+                            .buttonStyle(.bordered)
+                    }
+                    Divider()
+                }
             }
         }
+        .overlay { if loading { ProgressView() } }
+        .task { await load() }
+        .onDisappear { preview?.stop() }
+        .sheet(item: $coverPreview) { preview in
+            Image(uiImage: preview.image).resizable().scaledToFit().padding(20)
+                .accessibilityLabel(loc(.moderationPreviewCover))
+        }
+        .alert(loc(.errorGeneric), isPresented: Binding(
+            get: { error != nil }, set: { if !$0 { error = nil } }
+        )) { Button(loc(.generalOK)) { error = nil } } message: {
+            Text(error?.userMessage ?? loc(.errorTryAgain))
+        }
+    }
+
+    private func reviewSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SoundscapeSectionHeader(title: title)
+            content()
+        }
+    }
+
+    private func reviewActions(_ item: Soundscape) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button(loc(.moderationListen)) { Task { await listen(item) } }
+                Button(loc(.moderationApprove)) { Task { await decide(item, .approve) } }
+            }
+            Button(loc(.moderationReject), role: .destructive) { Task { await decide(item, .reject) } }
+        }
+        .buttonStyle(.bordered)
     }
 
     private func load() async {

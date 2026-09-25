@@ -112,6 +112,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerNotNow
     case playerLessLikeThis
     case moderationQueue
+    case moderationTab
     case moderationContact
     case moderationPending
     case moderationEmpty
@@ -139,18 +140,16 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case createDetail
     case createRecordingDuration
     case createImportAudio
-    case createLocationSection
     case createTitleAndDescription
     case createTitleField
     case createTitlePlaceholder
     case createDescriptionField
     case createDescriptionPlaceholder
-    case createThinkingGeneratingTitle
-    case createCoverSection
-    case createAIGeneratingCover
-    case createAICoverHint
     case createChooseFromLibrary
-    case createRegenerate
+    case createSuggestTitle
+    case createSuggestCover
+    case createSuggestionUnavailable
+    case createArtworkOptional
     case createCategoryAndFeel
     case createCategoryLabel
     case createCategoryPlace
@@ -227,7 +226,6 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case librarySignedOutDetail
     case librarySignInOrRegister
     case libraryChangeAvatar
-    case libraryAvatarLocalOnly
     case libraryAvatarUploadFailed
     case libraryReadingRecordings
     case libraryNoRecordingsTitle
@@ -342,6 +340,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     // MARK: - Miscellaneous UI
     case coverLoadFailed
     case coverNoCover
+    case coverDesignedArtwork
     case coverAILabel
     case coverAIBadge
     case coverLoading
@@ -462,6 +461,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNotNow: "不是现在"
         case .playerLessLikeThis: "少推荐这类"
         case .moderationQueue: "内容审核"
+        case .moderationTab: "审核"
         case .moderationContact: "联系支持：support@panor.tech"
         case .moderationPending: "待审核声音"
         case .moderationEmpty: "暂无待审核内容"
@@ -487,18 +487,16 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .createDetail: "录音、导入、AI 增强之后公开发布，让你的声音出现在探索页面和地图上。"
         case .createRecordingDuration: "录音时长"
         case .createImportAudio: "从文件导入音频"
-        case .createLocationSection: "地点"
         case .createTitleAndDescription: "标题和描述"
         case .createTitleField: "标题"
         case .createTitlePlaceholder: "给这段声音起个名字"
         case .createDescriptionField: "描述"
         case .createDescriptionPlaceholder: "一句话描述"
-        case .createThinkingGeneratingTitle: "思考中，正在生成标题和描述"
-        case .createCoverSection: "封面"
-        case .createAIGeneratingCover: "AI 正在自动生成封面"
-        case .createAICoverHint: "AI 封面会自动生成；也可以上传自己的封面覆盖它。"
         case .createChooseFromLibrary: "从相册选择"
-        case .createRegenerate: "重新自动生成"
+        case .createSuggestTitle: "试试智能标题"
+        case .createSuggestCover: "生成封面"
+        case .createSuggestionUnavailable: "智能建议暂不可用，你仍可编辑并发布。"
+        case .createArtworkOptional: "封面可选 · 稍后也能完成"
         case .createCategoryAndFeel: "分类和感受"
         case .createCategoryLabel: "分类"
         case .createCategoryPlace: "地方"
@@ -571,7 +569,6 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .librarySignedOutDetail: "使用 Panor 账号发布、设为私密或删除自己的录音。"
         case .librarySignInOrRegister: "登录或注册"
         case .libraryChangeAvatar: "更换头像"
-        case .libraryAvatarLocalOnly: "从相册选取照片；头像仅保存在这台设备上"
         case .libraryAvatarUploadFailed: "头像保存失败"
         case .libraryReadingRecordings: "正在读取你的录音"
         case .libraryNoRecordingsTitle: "还没有录音"
@@ -676,6 +673,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .appShellMe: "我的"
         case .coverLoadFailed: "封面加载失败"
         case .coverNoCover: "这段录音没有封面"
+        case .coverDesignedArtwork: "声景专属封面"
         case .coverAILabel: "AI 生成封面"
         case .coverAIBadge: "SOUNDSCAPE AI"
         case .coverLoading: "正在加载封面"
@@ -790,6 +788,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNotNow: "Not now"
         case .playerLessLikeThis: "Less like this"
         case .moderationQueue: "Content review"
+        case .moderationTab: "Review"
         case .moderationContact: "Contact support: support@panor.tech"
         case .moderationPending: "Awaiting approval"
         case .moderationEmpty: "No pending recordings"
@@ -815,18 +814,16 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .createDetail: "Record, import, enhance with AI, then publish. Your sound will appear in Explore and on the map."
         case .createRecordingDuration: "Recording duration"
         case .createImportAudio: "Import audio from file"
-        case .createLocationSection: "Location"
         case .createTitleAndDescription: "Title & Description"
         case .createTitleField: "Title"
         case .createTitlePlaceholder: "Give this sound a name"
         case .createDescriptionField: "Description"
         case .createDescriptionPlaceholder: "One-line description"
-        case .createThinkingGeneratingTitle: "Thinking, generating title and description"
-        case .createCoverSection: "Cover"
-        case .createAIGeneratingCover: "AI is generating cover"
-        case .createAICoverHint: "AI cover is generated automatically; you can also upload your own to replace it."
         case .createChooseFromLibrary: "Choose from Library"
-        case .createRegenerate: "Regenerate"
+        case .createSuggestTitle: "Suggest a title"
+        case .createSuggestCover: "Generate artwork"
+        case .createSuggestionUnavailable: "Suggestions are busy. Your recording is ready to edit and share."
+        case .createArtworkOptional: "Artwork is optional"
         case .createCategoryAndFeel: "Category & Feel"
         case .createCategoryLabel: "Category"
         case .createCategoryPlace: "Place"
@@ -899,7 +896,6 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .librarySignedOutDetail: "Use your Panor account to publish, make private, or delete your recordings."
         case .librarySignInOrRegister: "Sign In or Register"
         case .libraryChangeAvatar: "Change avatar"
-        case .libraryAvatarLocalOnly: "Choose a photo; your avatar is saved only on this device"
         case .libraryAvatarUploadFailed: "Avatar could not be saved"
         case .libraryReadingRecordings: "Reading your recordings"
         case .libraryNoRecordingsTitle: "No recordings yet"
@@ -1004,6 +1000,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .appShellMe: "Me"
         case .coverLoadFailed: "Cover load failed"
         case .coverNoCover: "No cover for this recording"
+        case .coverDesignedArtwork: "Soundscape artwork"
         case .coverAILabel: "AI generated cover"
         case .coverAIBadge: "SOUNDSCAPE AI"
         case .coverLoading: "Loading cover"
@@ -1118,6 +1115,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerNotNow: "不是現在"
         case .playerLessLikeThis: "少推薦這類"
         case .moderationQueue: "內容審核"
+        case .moderationTab: "審核"
         case .moderationContact: "聯絡支援：support@panor.tech"
         case .moderationPending: "待審核聲音"
         case .moderationEmpty: "暫無待審核內容"
@@ -1143,18 +1141,16 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .createDetail: "錄音、匯入、AI 增強之後公開發佈，讓你的聲音出現在探索頁面和地圖上。"
         case .createRecordingDuration: "錄音時長"
         case .createImportAudio: "從檔案匯入音訊"
-        case .createLocationSection: "地點"
         case .createTitleAndDescription: "標題和描述"
         case .createTitleField: "標題"
         case .createTitlePlaceholder: "給這段聲音起個名字"
         case .createDescriptionField: "描述"
         case .createDescriptionPlaceholder: "一句話描述"
-        case .createThinkingGeneratingTitle: "思考中，正在生成標題和描述"
-        case .createCoverSection: "封面"
-        case .createAIGeneratingCover: "AI 正在自動生成封面"
-        case .createAICoverHint: "AI 封面會自動生成；也可以上傳自己的封面覆蓋它。"
         case .createChooseFromLibrary: "從相簿選擇"
-        case .createRegenerate: "重新自動生成"
+        case .createSuggestTitle: "試試智能標題"
+        case .createSuggestCover: "生成封面"
+        case .createSuggestionUnavailable: "智能建議暫不可用，你仍可編輯並發佈。"
+        case .createArtworkOptional: "封面可選 · 稍後也能完成"
         case .createCategoryAndFeel: "分類和感受"
         case .createCategoryLabel: "分類"
         case .createCategoryPlace: "地方"
@@ -1245,7 +1241,6 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .librarySignedOutDetail: "使用 Panor 帳號發佈、設為私密或刪除自己的錄音。"
         case .librarySignInOrRegister: "登錄或註冊"
         case .libraryChangeAvatar: "更換頭像"
-        case .libraryAvatarLocalOnly: "從相簿選取照片；頭像只儲存在這部裝置上"
         case .libraryAvatarUploadFailed: "頭像無法儲存"
         case .libraryReadingRecordings: "正在讀取你的錄音"
         case .libraryNoRecordingsTitle: "還沒有錄音"
@@ -1332,6 +1327,7 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .appShellMe: "我的"
         case .coverLoadFailed: "封面載入失敗"
         case .coverNoCover: "這段錄音沒有封面"
+        case .coverDesignedArtwork: "聲景專屬封面"
         case .coverAILabel: "AI 生成封面"
         case .coverAIBadge: "SOUNDSCAPE AI"
         case .coverLoading: "正在載入封面"

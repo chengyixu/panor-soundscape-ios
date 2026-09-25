@@ -348,7 +348,7 @@ private struct TopSoundscapeResult: View {
 
         Button(action: play) {
             HStack(spacing: 16) {
-                RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI)
+                RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI, avatarSeed: soundscape.id)
                     .frame(width: 96, height: 96)
                     .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
                     .overlay { RoundedRectangle(cornerRadius: 2).stroke(SoundscapeTheme.line, lineWidth: 0.75) }
@@ -357,10 +357,13 @@ private struct TopSoundscapeResult: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(SoundscapeTheme.ink)
                         .lineLimit(2)
-                    Text(soundscape.authorDisplay)
-                        .font(.subheadline)
-                        .foregroundStyle(SoundscapeTheme.secondaryInk)
-                        .lineLimit(1)
+                    HStack(spacing: 7) {
+                        SoundscapeAvatar(seed: soundscape.ownerID, size: 24)
+                        Text(soundscape.authorDisplay)
+                            .font(.subheadline)
+                            .foregroundStyle(SoundscapeTheme.secondaryInk)
+                            .lineLimit(1)
+                    }
                     Text("\(soundscape.locationDisplay) · \(soundscape.categoryDisplay)")
                         .font(.caption)
                         .foregroundStyle(SoundscapeTheme.secondaryInk)
@@ -394,7 +397,7 @@ private struct SoundscapeSearchRow: View {
 
         Button(action: play) {
             HStack(spacing: 14) {
-                RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI)
+                RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI, avatarSeed: soundscape.id)
                     .frame(width: 66, height: 66)
                     .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
                     .overlay { RoundedRectangle(cornerRadius: 2).stroke(SoundscapeTheme.line, lineWidth: 0.75) }
@@ -404,10 +407,13 @@ private struct SoundscapeSearchRow: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(SoundscapeTheme.ink)
                         .lineLimit(1)
-                    Text("\(soundscape.authorDisplay) · \(soundscape.categoryDisplay)")
-                        .font(.subheadline)
-                        .foregroundStyle(SoundscapeTheme.secondaryInk)
-                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        SoundscapeAvatar(seed: soundscape.ownerID, size: 22)
+                        Text("\(soundscape.authorDisplay) · \(soundscape.categoryDisplay)")
+                            .font(.subheadline)
+                            .foregroundStyle(SoundscapeTheme.secondaryInk)
+                            .lineLimit(1)
+                    }
                     Text("\(soundscape.locationDisplay) · \(soundscape.durationDisplay)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(SoundscapeTheme.secondaryInk)

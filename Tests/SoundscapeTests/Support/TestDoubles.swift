@@ -115,6 +115,7 @@ actor StubSoundscapeRepository: SoundscapeRepository {
     var savedResult: Result<[Soundscape], AppError> = .success([])
     var toggleSaveResult: Result<SaveResponse, AppError> = .success(SaveResponse(saved: true, saveCount: 3))
     var createdDraft: CreateSoundscapeDraft?
+    var titleResult: Result<TitleSuggestion, AppError> = .success(TitleSuggestion(title: "雨落站台", description: "列车离开后，雨声留在空站台。"))
     var reportedPlays: [(id: Int, listenedSeconds: Int)] = []
     var reportPlayResult: Result<PlayResponse, AppError> = .success(PlayResponse(ok: true, fullPlay: false))
     var visibilityResult: Result<Void, AppError> = .success(())
@@ -128,6 +129,7 @@ actor StubSoundscapeRepository: SoundscapeRepository {
     private var mineDelay: Duration?
 
     func setExploreResult(_ result: Result<[Soundscape], AppError>) { exploreResult = result }
+    func setTitleResult(_ result: Result<TitleSuggestion, AppError>) { titleResult = result }
     func setExploreDelay(_ delay: Duration?) { exploreDelay = delay }
     func setMineDelay(_ delay: Duration?) { mineDelay = delay }
     func setRankingResult(_ result: Result<[RankingLane], AppError>) { rankingResult = result }
@@ -162,7 +164,7 @@ actor StubSoundscapeRepository: SoundscapeRepository {
         return TestFixtures.soundscape
     }
     func suggestTitle(_ request: TitleSuggestionRequest) async throws -> TitleSuggestion {
-        TitleSuggestion(title: "雨落站台", description: "列车离开后，雨声留在空站台。")
+        try titleResult.get()
     }
     func suggestCover(_ request: CoverSuggestionRequest) async throws -> CoverSuggestion {
         CoverSuggestion(coverURL: "/soundscape/api/staged-covers/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png", coverIsAI: 1)

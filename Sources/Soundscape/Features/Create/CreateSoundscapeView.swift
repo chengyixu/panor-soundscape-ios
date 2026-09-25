@@ -11,6 +11,7 @@ struct CreateSoundscapeView: View {
     @State private var showsAudioImporter = false
     @State private var showsIdentity = false
     @State private var localError: AppError?
+    @State private var showsMoreOptions = false
 
     init(
         repository: any SoundscapeRepository,
@@ -46,7 +47,15 @@ struct CreateSoundscapeView: View {
                 Task { await loadCover(item) }
             }
             .task(id: isActive) {
-                if isActive { await model.prepare() }
+                guard isActive else { return }
+                await model.prepare()
+#if DEBUG
+                if ProcessInfo.processInfo.environment["SOUNDSCAPE_UI_TEST_SHARE_DRAFT"] == "1",
+                   let file = Bundle.main.url(forResource: "AutoplayTestTone", withExtension: "m4a"),
+                   let data = try? Data(contentsOf: file) {
+                    await model.useImportedAudio(data: data, filename: "Rain at the Pier.wav", contentType: "audio/mp4")
+                }
+#endif
             }
         }
         .environment(\.locale, Locale(identifier: locale.rawValue))
@@ -77,18 +86,17 @@ struct CreateSoundscapeView: View {
     }
 
     private var capturePanel: some View {
-        VStack(spacing: 24) {
+        VStack(alignment: .leading, spacing: 28) {
             Text(model.prompt)
-                .font(.title3.weight(.semibold))
+                .font(.title2.weight(.semibold))
+                .tracking(-0.45)
                 .foregroundStyle(SoundscapeTheme.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .soundscapeSurface()
+                .fixedSize(horizontal: false, vertical: true)
 
             ZStack {
-                Circle().fill(SoundscapeTheme.paperRaised.opacity(0.72)).frame(width: 236, height: 236)
-                Circle().stroke(SoundscapeTheme.line.opacity(0.45), lineWidth: 1).frame(width: 236, height: 236)
-                Circle().stroke(SoundscapeTheme.accent.opacity(0.3), style: StrokeStyle(lineWidth: 10, dash: [2, 7])).frame(width: 190, height: 190)
+                VinylRecordArtwork(isRotating: isRecording)
+                    .frame(width: 240, height: 240)
+                    .accessibilityHidden(true)
                 Button {
                     Task {
                         if case .recording = model.phase { await model.stopRecording() }
@@ -96,101 +104,117 @@ struct CreateSoundscapeView: View {
                     }
                 } label: {
                     Image(systemName: recordingIcon)
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(SoundscapeTheme.paperRaised)
-                        .frame(width: 92, height: 92)
-                        .background(SoundscapeTheme.accent)
-                        .clipShape(Circle())
-                        .overlay { Circle().stroke(.white.opacity(0.2), lineWidth: 1) }
+                        .font(.system(size: 25, weight: .medium))
+                        .foregroundStyle(SoundscapeTheme.ink)
+                        .frame(width: 68, height: 68)
+                        .background(SoundscapeTheme.paperRaised, in: Circle())
                 }
+                .accessibilityLabel(recordingStatus)
+                .accessibilityIdentifier("share-record-control")
                 .disabled(model.phase == .requestingPermission)
                 .sensoryFeedback(.impact, trigger: model.phase)
             }
+            .frame(maxWidth: .infinity)
 
-            SoundscapeStatusLabel(title: recordingStatus, systemImage: recordingIcon)
-            if case .recording(let startedAt) = model.phase {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    Text(Self.durationText(from: startedAt, to: context.date))
-                        .font(.title2.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(SoundscapeTheme.ink)
-                        .accessibilityLabel("\(loc(.createRecordingDuration)) \(Self.durationText(from: startedAt, to: context.date))")
+            HStack(spacing: 12) {
+                SoundscapeStatusLabel(title: recordingStatus, systemImage: recordingIcon)
+                Spacer()
+                if case .recording(let startedAt) = model.phase {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(Self.durationText(from: startedAt, to: context.date))
+                            .font(.title2.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(SoundscapeTheme.ink)
+                            .accessibilityLabel("\(loc(.createRecordingDuration)) \(Self.durationText(from: startedAt, to: context.date))")
+                    }
                 }
             }
-            Button(loc(.createImportAudio)) { showsAudioImporter = true }.buttonStyle(SecondaryActionStyle())
+            Divider()
+            Button(loc(.createImportAudio)) { showsAudioImporter = true }
+                .buttonStyle(SecondaryActionStyle())
+                .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var reviewForm: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            section(loc(.createLocationSection)) {
-                HStack {
-                    Text(locationText)
+        VStack(alignment: .leading, spacing: 24) {
+            HStack(alignment: .top, spacing: 16) {
+                coverPreview
+                VStack(alignment: .leading, spacing: 9) {
+                    Text(loc(.createTitleAndDescription))
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(SoundscapeTheme.ink)
+                    Label(locationText, systemImage: "location")
                         .font(.subheadline)
-                        .foregroundStyle(model.locationStatus == .available ? SoundscapeTheme.ink : SoundscapeTheme.secondaryInk)
-                    Spacer()
-                    if model.locationStatus == .locating { ProgressView() }
+                        .foregroundStyle(SoundscapeTheme.secondaryInk)
+                        .lineLimit(2)
+                    Text(loc(.createArtworkOptional))
+                        .font(.caption)
+                        .foregroundStyle(SoundscapeTheme.secondaryInk)
                 }
             }
-            section(loc(.createTitleAndDescription)) {
-                SoundscapeField(title: loc(.createTitleField)) {
-                    TextField(loc(.createTitlePlaceholder), text: $model.title)
-                        .textFieldStyle(.plain)
-                }
-                SoundscapeField(title: loc(.createDescriptionField)) {
-                    TextField(loc(.createDescriptionPlaceholder), text: $model.description, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .lineLimit(3...5)
-                }
-                if model.phase == .generatingTitle {
-                    Label(loc(.createThinkingGeneratingTitle), systemImage: "sparkles")
-                        .font(.footnote)
-                        .foregroundStyle(SoundscapeTheme.accent)
-                }
+            SoundscapeField(title: loc(.createTitleField)) {
+                TextField(loc(.createTitlePlaceholder), text: $model.title)
+                    .textFieldStyle(.plain)
+                    .accessibilityIdentifier("share-title")
             }
-            .disabled(model.phase == .generatingTitle)
-            section(loc(.createCoverSection)) {
-                HStack(spacing: 14) {
-                    coverPreview
-                    VStack(alignment: .leading, spacing: 10) {
-                        if model.phase == .generatingCover {
-                            Label(loc(.createAIGeneratingCover), systemImage: "wand.and.stars")
-                                .font(.footnote)
-                                .foregroundStyle(SoundscapeTheme.accent)
-                        } else {
-                            Text(loc(.createAICoverHint))
-                                .font(.footnote)
-                                .foregroundStyle(SoundscapeTheme.secondaryInk)
+            SoundscapeField(title: loc(.createDescriptionField)) {
+                TextField(loc(.createDescriptionPlaceholder), text: $model.description, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...4)
+                    .accessibilityIdentifier("share-description")
+            }
+            Button {
+                Task { await model.suggestTitle() }
+            } label: {
+                Label(model.phase == .generatingTitle ? loc(.createThinking) : loc(.createSuggestTitle), systemImage: "sparkles")
+            }
+            .buttonStyle(SecondaryActionStyle())
+            .disabled(model.isGeneratingMetadata || model.phase == .publishing)
+            if model.generationError != nil {
+                Text(loc(.createSuggestionUnavailable))
+                    .font(.footnote)
+                    .foregroundStyle(SoundscapeTheme.secondaryInk)
+            }
+            HStack(spacing: 12) {
+                PhotosPicker(selection: $coverItem, matching: .images) {
+                    Label(loc(.createChooseFromLibrary), systemImage: "photo")
+                }
+                .buttonStyle(SecondaryActionStyle())
+                Button {
+                    Task { await model.suggestCover() }
+                } label: {
+                    Label(model.phase == .generatingCover ? loc(.createThinking) : loc(.createSuggestCover), systemImage: "wand.and.stars")
+                }
+                .buttonStyle(SecondaryActionStyle())
+                .disabled(model.isGeneratingMetadata || model.phase == .publishing)
+            }
+            DisclosureGroup(loc(.createCategoryAndFeel), isExpanded: $showsMoreOptions) {
+                VStack(spacing: 18) {
+                    Picker(loc(.createCategoryLabel), selection: $model.category) {
+                        ForEach(SoundscapeCategory.creationCases, id: \.rawValue) { category in
+                            Text(category.localizedTitle).tag(category.rawValue)
                         }
-                        PhotosPicker(selection: $coverItem, matching: .images) {
-                            Label(loc(.createChooseFromLibrary), systemImage: "photo.on.rectangle")
-                        }
-                        .buttonStyle(SecondaryActionStyle())
-                        .disabled(model.isGeneratingMetadata)
                     }
+                    .pickerStyle(.segmented)
+                    Slider(value: $model.personalSocial, in: 0...1) { Text(loc(.createPersonalToSocial)) }
+                        minimumValueLabel: { Text(loc(.createPersonal)) }
+                        maximumValueLabel: { Text(loc(.createSocial)) }
+                    Slider(value: $model.memoryPresent, in: 0...1) { Text(loc(.createMemoryToPresent)) }
+                        minimumValueLabel: { Text(loc(.createMemory)) }
+                        maximumValueLabel: { Text(loc(.createPresent)) }
                 }
+                .padding(.top, 12)
             }
-            if let generationError = model.generationError {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(generationError.userMessage)
-                        .font(.footnote)
-                        .foregroundStyle(SoundscapeTheme.accent)
-                    Button(loc(.createRegenerate)) { Task { await model.enrichAutomatically() } }
-                        .buttonStyle(SecondaryActionStyle())
-                }
+            .tint(SoundscapeTheme.ink)
+            Divider()
+            Toggle(loc(.createPublicToggle), isOn: $model.isPublic)
+                .tint(SoundscapeTheme.accent)
+            if model.isPublic {
+                Text(loc(.moderationAwaitingApproval))
+                    .font(.footnote)
+                    .foregroundStyle(SoundscapeTheme.secondaryInk)
             }
-            section(loc(.createCategoryAndFeel)) {
-                Picker(loc(.createCategoryLabel), selection: $model.category) {
-                    ForEach(SoundscapeCategory.creationCases, id: \.rawValue) { category in
-                        Text(category.localizedTitle).tag(category.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented)
-                Slider(value: $model.personalSocial, in: 0...1) { Text(loc(.createPersonalToSocial)) } minimumValueLabel: { Text(loc(.createPersonal)) } maximumValueLabel: { Text(loc(.createSocial)) }
-                Slider(value: $model.memoryPresent, in: 0...1) { Text(loc(.createMemoryToPresent)) } minimumValueLabel: { Text(loc(.createMemory)) } maximumValueLabel: { Text(loc(.createPresent)) }
-                Toggle(loc(.createPublicToggle), isOn: $model.isPublic).tint(SoundscapeTheme.accent)
-            }
-
             if session.user == nil {
                 Button(loc(.createLoginToPublish)) { showsIdentity = true }.buttonStyle(PrimaryActionStyle())
             } else {
@@ -214,7 +238,7 @@ struct CreateSoundscapeView: View {
                 if soundscape.moderationStatus == "pending", let data = model.stagedCoverData, let image = UIImage(data: data) {
                     Image(uiImage: image).resizable().scaledToFill()
                 } else {
-                    RemoteCover(url: soundscape.coverURL, category: soundscape.category)
+                    RemoteCover(url: soundscape.coverURL, category: soundscape.category, avatarSeed: soundscape.id)
                 }
             }
                 .frame(height: 310)
@@ -228,15 +252,6 @@ struct CreateSoundscapeView: View {
         .soundscapeSurface(cornerRadius: SoundscapeTheme.featureRadius)
     }
 
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SoundscapeSectionHeader(title: title)
-            content()
-        }
-        .padding(18)
-        .soundscapeSurface()
-    }
-
     @ViewBuilder private var coverPreview: some View {
         if let file = model.uploadedCover, let image = UIImage(data: file.data) {
             Image(uiImage: image).resizable().scaledToFill().frame(width: 112, height: 112).clipShape(RoundedRectangle(cornerRadius: 18))
@@ -247,16 +262,9 @@ struct CreateSoundscapeView: View {
                     Text(loc(.coverAIBadge)).font(.caption2.bold()).padding(6).background(.ultraThinMaterial).clipShape(Capsule()).padding(6)
                 }
         } else {
-            RoundedRectangle(cornerRadius: 18).fill(SoundscapeTheme.line.opacity(0.18)).frame(width: 112, height: 112)
+            SoundscapeAvatar(seed: session.user?.id ?? "guest", size: 112)
                 .overlay {
-                    if model.phase == .generatingCover {
-                        VStack(spacing: 8) {
-                            ProgressView()
-                            Text(loc(.createThinking)).font(.caption)
-                        }
-                    } else {
-                        Image(systemName: "photo").foregroundStyle(SoundscapeTheme.secondaryInk)
-                    }
+                    if model.phase == .generatingCover { ProgressView().tint(.white) }
                 }
         }
     }
@@ -267,6 +275,11 @@ struct CreateSoundscapeView: View {
         case .available: model.place?.name ?? loc(.createCurrentLocation)
         case .unavailable: loc(.createNoLocationPermission)
         }
+    }
+
+    private var isRecording: Bool {
+        if case .recording = model.phase { return true }
+        return false
     }
 
     private var recordingIcon: String {

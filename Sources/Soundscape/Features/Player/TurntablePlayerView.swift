@@ -802,7 +802,10 @@ struct TurntablePlayerView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     LazyVGrid(columns: detailColumns, spacing: 12) {
-                        detailFact(title: loc(.playerAuthor), value: soundscape.authorDisplay, icon: "person", identifier: "player-detail-author")
+                        HStack(spacing: 12) {
+                            SoundscapeAvatar(seed: soundscape.ownerID, size: 42)
+                            detailFact(title: loc(.playerAuthor), value: soundscape.authorDisplay, icon: "person", identifier: "player-detail-author")
+                        }
                         detailFact(title: loc(.playerLocation), value: soundscape.locationDisplay, icon: "location", identifier: "player-detail-location")
                         detailFact(title: loc(.playerDuration), value: durationText, icon: "waveform", identifier: "player-detail-duration")
                         detailFact(title: loc(.playerRecordedAt), value: recordingDateText, icon: "calendar", identifier: "player-detail-date")

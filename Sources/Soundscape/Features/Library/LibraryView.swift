@@ -6,6 +6,11 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
     case publicItems = "Public" // rawValue kept as key
     case privateItems = "Private" // rawValue kept as key
     case favorites = "Favorites" // rawValue kept as key
+    case review = "Review"
+
+    static func visibleFilters(canModerate: Bool) -> [LibraryFilter] {
+        canModerate ? allCases : allCases.filter { $0 != .review }
+    }
 
     var id: String { rawValue }
     
@@ -15,16 +20,19 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
         case .publicItems: loc(.libraryFilterPublic)
         case .privateItems: loc(.libraryFilterPrivate)
         case .favorites: loc(.librarySaved)
+        case .review: loc(.moderationTab)
         }
     }
 }
 
 struct LibraryFilterLayout: Layout {
     static let spacing: CGFloat = 8
+    static let minimumItemWidth: CGFloat = 76
+    var minimumWidth: CGFloat = minimumItemWidth
 
     static func itemWidth(availableWidth: CGFloat, itemCount: Int = LibraryFilter.allCases.count) -> CGFloat {
         guard itemCount > 0 else { return 0 }
-        return max(0, (availableWidth - spacing * CGFloat(itemCount - 1)) / CGFloat(itemCount))
+        return max(minimumItemWidth, (availableWidth - spacing * CGFloat(itemCount - 1)) / CGFloat(itemCount))
     }
 
     func sizeThatFits(
@@ -32,8 +40,9 @@ struct LibraryFilterLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) -> CGSize {
-        let width = proposedWidth(proposal: proposal, subviews: subviews)
-        let itemWidth = Self.itemWidth(availableWidth: width, itemCount: subviews.count)
+        let width = max(proposedWidth(proposal: proposal, subviews: subviews),
+                        CGFloat(subviews.count) * minimumWidth + CGFloat(max(0, subviews.count - 1)) * Self.spacing)
+        let itemWidth = max(minimumWidth, Self.itemWidth(availableWidth: width, itemCount: subviews.count))
         let height = subviews.map {
             $0.sizeThatFits(ProposedViewSize(width: itemWidth, height: proposal.height)).height
         }.max() ?? 0
@@ -46,7 +55,7 @@ struct LibraryFilterLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        let itemWidth = Self.itemWidth(availableWidth: bounds.width, itemCount: subviews.count)
+        let itemWidth = max(minimumWidth, Self.itemWidth(availableWidth: bounds.width, itemCount: subviews.count))
         for (index, subview) in subviews.enumerated() {
             let x = bounds.minX + CGFloat(index) * (itemWidth + Self.spacing)
             subview.place(
@@ -68,6 +77,7 @@ struct LibraryFilterLayout: Layout {
 
 struct LibraryView: View {
     @Environment(LocaleManager.self) private var localeManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var model: LibraryViewModel
     let repository: any SoundscapeRepository
     let moderation: any ModerationRepository
@@ -80,7 +90,6 @@ struct LibraryView: View {
     @State private var showsIdentity = false
     @State private var showsSettings = false
     @State private var canModerate = false
-    @State private var showsModeration = false
     @State private var pendingDelete: Soundscape?
     @State private var filter: LibraryFilter = .recordings
     @State private var favoriteActionError: AppError?
@@ -117,11 +126,6 @@ struct LibraryView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 25) {
                     profileHeader
-                    if canModerate {
-                        Button(loc(.moderationQueue)) { showsModeration = true }
-                            .buttonStyle(SecondaryActionStyle())
-                            .accessibilityIdentifier("moderation-queue")
-                    }
                     if session.user == nil { signedOut }
                     else {
                         filterTabs
@@ -136,16 +140,16 @@ struct LibraryView: View {
             .refreshable { if session.user != nil { await model.load() } }
             .task(id: "\(session.user?.id ?? "signed-out"):\(isActive)") {
                 if session.user != nil, isActive {
+                    canModerate = false
+                    if filter == .review { filter = .recordings }
                     await model.load()
                     do {
                         canModerate = try await moderation.hasModeratorAccess()
                     } catch {
+                        // Role lookup failures must not masquerade as avatar errors.
                         canModerate = false
-                        // The backend still checks authorization on every admin call.
-                        // A failed check is not proof of non-moderator status.
-                        avatarActionError = .transport(String(describing: type(of: error)))
                     }
-                } else if session.user == nil { canModerate = false }
+                } else if session.user == nil { canModerate = false; filter = .recordings }
             }
             .sheet(isPresented: $showsIdentity) { IdentitySheet(session: session) }
             .onChange(of: selectedAvatarPhoto) { _, selection in
@@ -159,9 +163,6 @@ struct LibraryView: View {
                 Button(loc(.generalOK)) { avatarActionError = nil; session.dismissAvatarError() }
             } message: {
                 Text((avatarActionError ?? session.avatarError)?.userMessage ?? loc(.errorTryAgain))
-            }
-            .sheet(isPresented: $showsModeration) {
-                ModeratorReviewView(repository: moderation)
             }
             .sheet(isPresented: $showsSettings) {
                 SettingsView(
@@ -204,11 +205,6 @@ struct LibraryView: View {
                 Text(session.user == nil ? loc(.libraryPrivateUntilSignIn) : loc(.librarySoundRecorder))
                     .font(.subheadline)
                     .foregroundStyle(SoundscapeTheme.secondaryInk)
-                if session.user != nil {
-                    Text(loc(.libraryAvatarLocalOnly))
-                        .font(.caption2)
-                        .foregroundStyle(SoundscapeTheme.secondaryInk)
-                }
             }
             Spacer()
             Button {
@@ -231,7 +227,6 @@ struct LibraryView: View {
             .photosPicker(isPresented: $isShowingAvatarPicker, selection: $selectedAvatarPhoto, matching: .images)
             .disabled(isSavingAvatar)
             .accessibilityLabel(loc(.libraryChangeAvatar))
-            .accessibilityHint(loc(.libraryAvatarLocalOnly))
             .accessibilityIdentifier("profile-avatar-picker")
         } else {
             Button { showsIdentity = true } label: { profileAvatar }
@@ -243,34 +238,18 @@ struct LibraryView: View {
 
     private var profileAvatar: some View {
         ZStack {
-            Circle().fill(SoundscapeTheme.paperDeep)
-            if let avatar = session.avatar {
-                switch avatar {
-                case .photo(let data):
-                    if let image = UIImage(data: data) {
-                        Image(uiImage: image).resizable().scaledToFill()
-                    }
-                case .generated(let index):
-                    Image(systemName: Self.avatarSymbols[index % Self.avatarSymbols.count])
-                        .font(.system(size: 29, weight: .medium))
-                        .foregroundStyle(SoundscapeTheme.ink)
-                }
-            } else {
-                Image(systemName: "person.fill")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(SoundscapeTheme.secondaryInk)
-            }
-            if isSavingAvatar { ProgressView().tint(SoundscapeTheme.ink) }
+            SoundscapeAvatar(
+                seed: session.user?.id ?? "guest",
+                size: 68,
+                photo: {
+                    guard case .photo(let data) = session.avatar else { return nil }
+                    return data
+                }()
+            )
+            if isSavingAvatar { ProgressView().tint(.white) }
         }
-        .frame(width: 68, height: 68)
-        .clipShape(Circle())
-        .overlay { Circle().stroke(SoundscapeTheme.line, lineWidth: 1) }
         .accessibilityHidden(true)
     }
-
-    private static let avatarSymbols = [
-        "waveform", "leaf", "drop", "sparkle", "mountain.2", "moon.stars", "sun.max", "wind"
-    ]
 
     private func updateAvatar(from selection: PhotosPickerItem) async {
         guard let userID = session.user?.id else { return }
@@ -291,22 +270,27 @@ struct LibraryView: View {
     }
 
     private var filterTabs: some View {
-        LibraryFilterLayout {
-            ForEach(LibraryFilter.allCases) { option in
-                Button {
-                    filter = option
-                } label: {
-                    VStack(spacing: 9) {
-                        Text(option.displayName)
-                            .font(.subheadline.weight(filter == option ? .semibold : .regular))
-                            .foregroundStyle(filter == option ? SoundscapeTheme.ink : SoundscapeTheme.secondaryInk)
-                        Rectangle()
-                            .fill(filter == option ? SoundscapeTheme.ink : .clear)
-                            .frame(height: 2)
+        ScrollView(.horizontal, showsIndicators: false) {
+            LibraryFilterLayout(minimumWidth: dynamicTypeSize.isAccessibilitySize ? 150 : 76) {
+                ForEach(LibraryFilter.visibleFilters(canModerate: canModerate)) { option in
+                    Button { filter = option } label: {
+                        VStack(spacing: 9) {
+                            Text(option.displayName)
+                                .font(.subheadline.weight(filter == option ? .semibold : .regular))
+                                .lineLimit(1)
+                                .foregroundStyle(filter == option ? SoundscapeTheme.ink : SoundscapeTheme.secondaryInk)
+                            Rectangle()
+                                .fill(filter == option ? SoundscapeTheme.ink : .clear)
+                                .frame(height: 2)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("library-filter-\(option.rawValue)")
                 }
-                .buttonStyle(.plain)
             }
+            .frame(minWidth: dynamicTypeSize.isAccessibilitySize
+                   ? CGFloat(canModerate ? 5 : 4) * 150 + CGFloat(canModerate ? 4 : 3) * LibraryFilterLayout.spacing
+                   : canModerate ? 412 : 328)
         }
         .overlay(alignment: .bottom) {
             Rectangle().fill(SoundscapeTheme.line.opacity(0.7)).frame(height: 0.75)
@@ -321,10 +305,11 @@ struct LibraryView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if filter == .favorites {
-            favoriteContent
-        } else {
-            recordingContent
+        switch filter {
+        case .favorites: favoriteContent
+        case .review:
+            if canModerate { ModeratorReviewView(repository: moderation) }
+        default: recordingContent
         }
     }
 
@@ -411,7 +396,7 @@ struct LibraryView: View {
         case .recordings: items
         case .publicItems: items.filter(\.isPublic)
         case .privateItems: items.filter { !$0.isPublic }
-        case .favorites: []
+        case .favorites, .review: []
         }
     }
 
@@ -422,12 +407,15 @@ private struct FavoriteSoundscapeRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI)
+            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI, avatarSeed: item.id)
                 .frame(width: 70, height: 70)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.displayTitle).font(.headline).lineLimit(1)
-                Text(item.authorDisplay).font(.subheadline).foregroundStyle(SoundscapeTheme.secondaryInk).lineLimit(1)
+                HStack(spacing: 6) {
+                    SoundscapeAvatar(seed: item.ownerID, size: 22)
+                    Text(item.authorDisplay).font(.subheadline).foregroundStyle(SoundscapeTheme.secondaryInk).lineLimit(1)
+                }
                 Text("\(item.locationDisplay)  ·  \(item.durationDisplay)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(SoundscapeTheme.secondaryInk)
@@ -459,7 +447,7 @@ private struct LibraryHero: View {
         let locale = localeManager.current
 
         Button(action: play) {
-            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI)
+            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI, avatarSeed: item.id)
                 .frame(height: 292)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(alignment: .bottom) {
@@ -504,7 +492,7 @@ private struct LibraryRow: View {
         let locale = localeManager.current
 
         HStack(spacing: 14) {
-            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI)
+            RemoteCover(url: item.coverURL, category: item.category, isAI: item.coverIsAI, avatarSeed: item.id)
                 .frame(width: 70, height: 70)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 5) {

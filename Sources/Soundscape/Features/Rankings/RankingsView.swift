@@ -74,13 +74,19 @@ private struct CDCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 ZStack {
                     Circle().fill(SoundscapeTheme.ink.opacity(0.94)).frame(width: 154, height: 154)
-                    RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI)
+                    RemoteCover(url: soundscape.coverURL, category: soundscape.category, isAI: soundscape.coverIsAI, avatarSeed: soundscape.id)
                         .frame(width: 140, height: 140)
                         .clipShape(Circle())
                     Circle().fill(SoundscapeTheme.paper).frame(width: 28, height: 28)
                     Circle().stroke(SoundscapeTheme.paperRaised.opacity(0.6), lineWidth: 1).frame(width: 50, height: 50)
                 }
                 Text(soundscape.displayTitle).font(.headline).foregroundStyle(SoundscapeTheme.ink).lineLimit(1)
+                HStack(spacing: 6) {
+                    SoundscapeAvatar(seed: soundscape.ownerID, size: 22)
+                    Text(soundscape.authorDisplay).lineLimit(1)
+                }
+                .font(.caption)
+                .foregroundStyle(SoundscapeTheme.secondaryInk)
                 Label("\(soundscape.playCount)", systemImage: "play.fill")
                     .font(.caption.monospaced())
                     .foregroundStyle(SoundscapeTheme.secondaryInk)

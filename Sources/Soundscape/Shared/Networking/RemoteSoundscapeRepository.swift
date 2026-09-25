@@ -56,6 +56,7 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
         switch draft.cover {
         case .upload(let file): builder.addFile(name: "cover", file: file)
         case .generated(let path): builder.addField(name: "cover_url", value: path)
+        case nil: break
         }
         builder.addField(name: "title", value: draft.title)
         builder.addField(name: "description", value: draft.description)
