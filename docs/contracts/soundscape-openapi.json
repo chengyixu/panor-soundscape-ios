@@ -152,6 +152,21 @@
         "title": "PlayReq",
         "type": "object"
       },
+      "ReportRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReportRequest",
+        "type": "object"
+      },
       "TitleReq": {
         "properties": {
           "location_name": {
@@ -221,7 +236,7 @@
       "VisReq": {
         "properties": {
           "is_public": {
-            "default": 1,
+            "default": 0,
             "title": "Is Public",
             "type": "integer"
           }
@@ -361,17 +376,6 @@
     "/feedback": {
       "post": {
         "operationId": "submit_feedback_feedback_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "title": "Authorization",
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -421,16 +425,158 @@
         "summary": "Health"
       }
     },
+    "/me/blocked-creators": {
+      "get": {
+        "operationId": "blocked_creators_me_blocked_creators_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Blocked Creators"
+      }
+    },
+    "/me/saved": {
+      "get": {
+        "operationId": "my_saved_soundscapes_me_saved_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Saved Soundscapes"
+      }
+    },
     "/me/soundscapes": {
       "get": {
         "operationId": "my_soundscapes_me_soundscapes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Soundscapes"
+      }
+    },
+    "/moderation/access": {
+      "get": {
+        "operationId": "access_moderation_access_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Access"
+      }
+    },
+    "/moderation/pending": {
+      "get": {
+        "operationId": "pending_moderation_pending_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pending"
+      }
+    },
+    "/moderation/reports": {
+      "get": {
+        "operationId": "reports_moderation_reports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reports"
+      }
+    },
+    "/moderation/reports/{report_id}/resolve": {
+      "post": {
+        "operationId": "resolve_report_moderation_reports__report_id__resolve_post",
         "parameters": [
           {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
+            "in": "path",
+            "name": "report_id",
+            "required": true,
             "schema": {
-              "title": "Authorization",
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Report"
+      }
+    },
+    "/moderation/soundscapes/{sid}/media/{kind}": {
+      "get": {
+        "operationId": "moderator_media_moderation_soundscapes__sid__media__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sid",
+            "required": true,
+            "schema": {
+              "title": "Sid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
               "type": "string"
             }
           }
@@ -455,7 +601,90 @@
             "description": "Validation Error"
           }
         },
-        "summary": "My Soundscapes"
+        "summary": "Moderator Media"
+      }
+    },
+    "/moderation/soundscapes/{sid}/{action}": {
+      "post": {
+        "operationId": "decide_moderation_soundscapes__sid___action__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sid",
+            "required": true,
+            "schema": {
+              "title": "Sid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "title": "Action",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide"
+      }
+    },
+    "/moderation/users/{creator_id}/suspend": {
+      "post": {
+        "operationId": "suspend_moderation_users__creator_id__suspend_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suspend"
       }
     },
     "/rankings": {
@@ -539,17 +768,6 @@
       },
       "post": {
         "operationId": "create_soundscape_soundscapes_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "title": "Authorization",
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -594,15 +812,6 @@
             "schema": {
               "title": "Sid",
               "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "title": "Authorization",
-              "type": "string"
             }
           }
         ],
@@ -664,6 +873,52 @@
         "summary": "Get One"
       }
     },
+    "/soundscapes/{sid}/media/{kind}": {
+      "get": {
+        "operationId": "private_media_soundscapes__sid__media__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sid",
+            "required": true,
+            "schema": {
+              "title": "Sid",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Private Media"
+      }
+    },
     "/soundscapes/{sid}/play": {
       "post": {
         "description": "Anonymous-friendly: anyone can play; logs an interaction for study data.",
@@ -712,9 +967,9 @@
         "summary": "Play"
       }
     },
-    "/soundscapes/{sid}/save": {
-      "post": {
-        "operationId": "save_toggle_soundscapes__sid__save_post",
+    "/soundscapes/{sid}/public-media/{kind}": {
+      "get": {
+        "operationId": "public_media_soundscapes__sid__public_media__kind__get",
         "parameters": [
           {
             "in": "path",
@@ -726,12 +981,96 @@
             }
           },
           {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
+            "in": "path",
+            "name": "kind",
+            "required": true,
             "schema": {
-              "title": "Authorization",
+              "title": "Kind",
               "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Public Media"
+      }
+    },
+    "/soundscapes/{sid}/report": {
+      "post": {
+        "operationId": "report_soundscapes__sid__report_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sid",
+            "required": true,
+            "schema": {
+              "title": "Sid",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report"
+      }
+    },
+    "/soundscapes/{sid}/save": {
+      "post": {
+        "operationId": "save_toggle_soundscapes__sid__save_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sid",
+            "required": true,
+            "schema": {
+              "title": "Sid",
+              "type": "integer"
             }
           }
         ],
@@ -770,15 +1109,6 @@
               "title": "Sid",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "title": "Authorization",
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
@@ -814,60 +1144,16 @@
         "summary": "Set Visibility"
       }
     },
-    "/soundscapes/{soundscape_id}/world": {
+    "/staged-covers/{name}": {
       "get": {
-        "operationId": "get_world_soundscapes__soundscape_id__world_get",
+        "operationId": "staged_cover_staged_covers__name__get",
         "parameters": [
           {
             "in": "path",
-            "name": "soundscape_id",
+            "name": "name",
             "required": true,
             "schema": {
-              "title": "Soundscape Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get World"
-      },
-      "post": {
-        "operationId": "retry_world_soundscapes__soundscape_id__world_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "soundscape_id",
-            "required": true,
-            "schema": {
-              "title": "Soundscape Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "title": "Authorization",
+              "title": "Name",
               "type": "string"
             }
           }
@@ -892,7 +1178,79 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Retry World"
+        "summary": "Staged Cover"
+      }
+    },
+    "/users/{creator_id}/block": {
+      "delete": {
+        "operationId": "unblock_users__creator_id__block_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unblock"
+      },
+      "post": {
+        "operationId": "block_users__creator_id__block_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "creator_id",
+            "required": true,
+            "schema": {
+              "title": "Creator Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Block"
       }
     }
   }
