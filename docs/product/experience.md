@@ -300,7 +300,7 @@ The native interaction contract was updated on 2026-09-13. This supersedes the e
 ## Sharing a Soundscape
 
 - Capture uses the same vinyl visual language as playback. After recording or importing audio, the review form immediately has an editable filename-derived title and an optional design-consistent cover; no AI request blocks the flow.
-- Title and artwork suggestions are opt-in. When the upstream AI gateway is rate-limited, a brief inline message leaves the draft editable and publishable without a generated cover.
+- Title suggestion, photo selection, and AI artwork are three equal actions in one horizontal row in the Share editor. Suggestions are opt-in; when the upstream AI gateway is rate-limited, a brief inline message leaves the draft editable and publishable without a generated cover.
 - The category and optional resonance sliders sit behind a disclosure; publication intent and the moderator-approval requirement remain visible before submitting.
 - Me has a fifth **Review** filter for authorized moderators, rendered inline with the other four filters rather than as a separate button or modal. Server-side authorization still governs every moderation action.
 

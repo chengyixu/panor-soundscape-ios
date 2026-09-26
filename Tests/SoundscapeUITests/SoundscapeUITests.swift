@@ -243,7 +243,13 @@ final class SoundscapeUITests: XCTestCase {
         let title = app.textFields["share-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 10))
         XCTAssertEqual(title.value as? String, "Rain at the Pier")
-        XCTAssertTrue(app.buttons["试试智能标题"].exists)
+        let actions = ["share-action-title", "share-action-photo", "share-action-artwork"].map { app.buttons[$0] }
+        for action in actions { XCTAssertTrue(action.exists) }
+        let frames = actions.map(\.frame)
+        XCTAssertTrue(frames[0].maxX < frames[1].minX && frames[1].maxX < frames[2].minX,
+                      "Title, photo and artwork must appear left-to-right in one row")
+        XCTAssertLessThan(abs(frames[0].midY - frames[1].midY), 3)
+        XCTAssertLessThan(abs(frames[1].midY - frames[2].midY), 3)
         XCTAssertFalse(app.staticTexts["暂时无法生成标题和描述，请稍后重试或手动填写。"].exists)
         XCTAssertTrue(app.staticTexts["封面可选 · 稍后也能完成"].exists)
         capture("Soundscape-Share-Review")

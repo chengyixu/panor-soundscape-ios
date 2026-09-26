@@ -48,7 +48,6 @@ struct CreateSoundscapeView: View {
             }
             .task(id: isActive) {
                 guard isActive else { return }
-                await model.prepare()
 #if DEBUG
                 if ProcessInfo.processInfo.environment["SOUNDSCAPE_UI_TEST_SHARE_DRAFT"] == "1",
                    let file = Bundle.main.url(forResource: "AutoplayTestTone", withExtension: "m4a"),
@@ -56,6 +55,7 @@ struct CreateSoundscapeView: View {
                     await model.useImportedAudio(data: data, filename: "Rain at the Pier.wav", contentType: "audio/mp4")
                 }
 #endif
+                await model.prepare()
             }
         }
         .environment(\.locale, Locale(identifier: locale.rawValue))
@@ -164,30 +164,34 @@ struct CreateSoundscapeView: View {
                     .lineLimit(2...4)
                     .accessibilityIdentifier("share-description")
             }
-            Button {
-                Task { await model.suggestTitle() }
-            } label: {
-                Label(model.phase == .generatingTitle ? loc(.createThinking) : loc(.createSuggestTitle), systemImage: "sparkles")
+            HStack(alignment: .top, spacing: 8) {
+                Button {
+                    Task { await model.suggestTitle() }
+                } label: {
+                    ShareActionTile(title: loc(model.phase == .generatingTitle ? .createThinking : .createSuggestTitle), symbol: "sparkles")
+                }
+                .accessibilityIdentifier("share-action-title")
+                .disabled(model.isGeneratingMetadata || model.phase == .publishing)
+
+                PhotosPicker(selection: $coverItem, matching: .images) {
+                    ShareActionTile(title: loc(.createChooseFromLibrary), symbol: "photo")
+                }
+                .accessibilityIdentifier("share-action-photo")
+                .disabled(model.isGeneratingMetadata || model.phase == .publishing)
+
+                Button {
+                    Task { await model.suggestCover() }
+                } label: {
+                    ShareActionTile(title: loc(model.phase == .generatingCover ? .createThinking : .createSuggestCover), symbol: "wand.and.stars")
+                }
+                .accessibilityIdentifier("share-action-artwork")
+                .disabled(model.isGeneratingMetadata || model.phase == .publishing)
             }
-            .buttonStyle(SecondaryActionStyle())
-            .disabled(model.isGeneratingMetadata || model.phase == .publishing)
+            .buttonStyle(.plain)
             if model.generationError != nil {
                 Text(loc(.createSuggestionUnavailable))
                     .font(.footnote)
                     .foregroundStyle(SoundscapeTheme.secondaryInk)
-            }
-            HStack(spacing: 12) {
-                PhotosPicker(selection: $coverItem, matching: .images) {
-                    Label(loc(.createChooseFromLibrary), systemImage: "photo")
-                }
-                .buttonStyle(SecondaryActionStyle())
-                Button {
-                    Task { await model.suggestCover() }
-                } label: {
-                    Label(model.phase == .generatingCover ? loc(.createThinking) : loc(.createSuggestCover), systemImage: "wand.and.stars")
-                }
-                .buttonStyle(SecondaryActionStyle())
-                .disabled(model.isGeneratingMetadata || model.phase == .publishing)
             }
             DisclosureGroup(loc(.createCategoryAndFeel), isExpanded: $showsMoreOptions) {
                 VStack(spacing: 18) {
@@ -333,5 +337,32 @@ struct CreateSoundscapeView: View {
     private static func durationText(from start: Date, to end: Date) -> String {
         let seconds = max(0, Int(end.timeIntervalSince(start)))
         return String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+private struct ShareActionTile: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        VStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 19, weight: .medium))
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(SoundscapeTheme.ink)
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 76)
+        .padding(.horizontal, 3)
+        .background(SoundscapeTheme.paperRaised, in: RoundedRectangle(cornerRadius: SoundscapeTheme.controlRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: SoundscapeTheme.controlRadius)
+                .strokeBorder(SoundscapeTheme.line.opacity(0.75), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
     }
 }
