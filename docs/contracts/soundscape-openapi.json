@@ -84,6 +84,17 @@
             "title": "Tag Personal Social",
             "type": "number"
           },
+          "theme_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme Id"
+          },
           "title": {
             "default": "",
             "title": "Title",
@@ -165,6 +176,60 @@
           "reason"
         ],
         "title": "ReportRequest",
+        "type": "object"
+      },
+      "ThemeRequest": {
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Description",
+            "type": "string"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "kind": {
+            "default": "topic",
+            "enum": [
+              "topic",
+              "event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          },
+          "title": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ThemeRequest",
         "type": "object"
       },
       "TitleReq": {
@@ -373,6 +438,23 @@
         "summary": "Ai Title"
       }
     },
+    "/featured": {
+      "get": {
+        "description": "Most played approved public recordings in the previous seven days.",
+        "operationId": "featured_featured_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Featured"
+      }
+    },
     "/feedback": {
       "post": {
         "operationId": "submit_feedback_feedback_post",
@@ -423,6 +505,23 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/me/account-data": {
+      "delete": {
+        "description": "Idempotently erase this user's uploads and references; never accept a client user ID.",
+        "operationId": "delete_account_data_me_account_data_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Account Data"
       }
     },
     "/me/blocked-creators": {
@@ -650,6 +749,42 @@
         "summary": "Decide"
       }
     },
+    "/moderation/themes": {
+      "post": {
+        "operationId": "create_theme_moderation_themes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Theme"
+      }
+    },
     "/moderation/users/{creator_id}/suspend": {
       "post": {
         "operationId": "suspend_moderation_users__creator_id__suspend_post",
@@ -741,6 +876,22 @@
             "schema": {
               "title": "Category",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "theme_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Theme Id"
             }
           }
         ],
@@ -1179,6 +1330,59 @@
           }
         },
         "summary": "Staged Cover"
+      }
+    },
+    "/themes": {
+      "get": {
+        "operationId": "themes_themes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Themes"
+      }
+    },
+    "/themes/{theme_id}/soundscapes": {
+      "get": {
+        "operationId": "theme_soundscapes_themes__theme_id__soundscapes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "theme_id",
+            "required": true,
+            "schema": {
+              "title": "Theme Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Theme Soundscapes"
       }
     },
     "/users/{creator_id}/block": {
