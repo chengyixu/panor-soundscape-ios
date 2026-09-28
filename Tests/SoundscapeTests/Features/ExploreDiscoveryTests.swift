@@ -15,6 +15,13 @@ final class ExploreDiscoveryTests: XCTestCase {
         XCTAssertTrue(Set(terms).isSubset(of: allowed))
     }
 
+    func testThemeTitlesAreSearchableWithoutReplacingSoundCategory() {
+        var sound = TestFixtures.soundscape
+        sound.theme = ListeningTheme(id: 9, title: "City cycling", description: "", kind: .topic, startsOn: nil, endsOn: nil, recordingCount: nil)
+        XCTAssertEqual(ExploreDiscovery.search([sound], query: "cycling", scope: .all, durationFilter: nil).map(\.id), [sound.id])
+        XCTAssertEqual(sound.category, TestFixtures.soundscape.category)
+    }
+
     func testSearchMatchesRealAuthorAndLocationMetadata() {
         let items = [TestFixtures.soundscape, TestFixtures.soundscapeWithoutCoordinate]
 

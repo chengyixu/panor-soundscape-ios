@@ -7,6 +7,8 @@ struct DiscoveryMapView: View {
     @State private var model: DiscoveryMapViewModel
     @State private var position: MapCameraPosition = .automatic
     @State private var favoriteError: AppError?
+    @State private var showsList = false
+    @FocusState private var searchFocused: Bool
     let player: AudioPlayerController
     let isActive: Bool
 
@@ -24,6 +26,8 @@ struct DiscoveryMapView: View {
                 ScreenHeader(title: loc(.mapTitle))
                     .padding(.horizontal, SoundscapeTheme.screenPadding)
                     .padding(.top, SoundscapeTheme.screenPadding)
+                searchControls
+                    .padding(.horizontal, SoundscapeTheme.screenPadding)
                 content
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -58,10 +62,26 @@ struct DiscoveryMapView: View {
         case .loaded(let items) where items.isEmpty:
             EmptyStateView(title: loc(.mapEmptyTitle), detail: loc(.mapEmpty), systemImage: "map").padding(18)
         case .loaded(let items):
+            let results = model.results
+            if showsList {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        if results.isEmpty { Text(loc(.mapNoResults)).foregroundStyle(SoundscapeTheme.secondaryInk) }
+                        ForEach(results) { item in
+                            MapSelectionCard(soundscape: item,
+                                isSaved: player.savedSoundscapeIDs.contains(item.id),
+                                play: { Task { await player.openPlayer(item, sequence: results, source: .map) } },
+                                favorite: { toggleFavorite(item) })
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 14)
+                }
+            } else {
             GeometryReader { proxy in
                 ZStack(alignment: .bottom) {
                     Map(position: $position, selection: $model.selectedID) {
-                        ForEach(items) { item in
+                        ForEach(results) { item in
                             if let latitude = item.latitude, let longitude = item.longitude {
                                 Annotation(item.displayTitle, coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)) {
                                     let selected = model.selectedID == item.id
@@ -86,6 +106,12 @@ struct DiscoveryMapView: View {
                             }
                         }
                     }
+                    .onMapCameraChange(frequency: .onEnd) { context in
+                        model.cameraArea = RecordingMapArea(latitude: context.region.center.latitude,
+                            longitude: context.region.center.longitude,
+                            latitudeDelta: context.region.span.latitudeDelta,
+                            longitudeDelta: context.region.span.longitudeDelta)
+                    }
                     .mapStyle(
                         .standard(
                             elevation: .flat,
@@ -104,11 +130,13 @@ struct DiscoveryMapView: View {
                     }
                     .overlay(alignment: .topTrailing) {
                         Button {
+                            model.query = ""
+                            model.clearArea()
                             showAll(items, animated: true)
                         } label: {
                             Image(systemName: "globe.asia.australia.fill")
                                 .font(.system(size: 15, weight: .semibold))
-                                .frame(width: 38, height: 38)
+                                .frame(width: 44, height: 44)
                                 .foregroundStyle(SoundscapeTheme.ink)
                                 .background(SoundscapeTheme.paperRaised)
                                 .clipShape(Circle())
@@ -119,25 +147,80 @@ struct DiscoveryMapView: View {
                         .accessibilityIdentifier("map-show-all")
                         .padding(12)
                     }
-                    .onChange(of: model.selectedID) {
-                        focusSelection(in: items, animated: true)
+                    .overlay(alignment: .topLeading) {
+                        Button(loc(.mapSearchArea)) { model.searchThisArea() }
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 44)
+                            .background(SoundscapeTheme.paperRaised, in: Capsule())
+                            .disabled(model.cameraArea == nil)
+                            .accessibilityIdentifier("map-search-area")
+                            .padding(12)
                     }
-
-                    if let selected = items.first(where: { $0.id == model.selectedID }) {
+                    if results.isEmpty {
+                        Text(loc(.mapNoResults))
+                            .font(.subheadline).padding(16)
+                            .background(SoundscapeTheme.paperRaised, in: RoundedRectangle(cornerRadius: 12))
+                            .frame(maxHeight: .infinity, alignment: .center)
+                    }
+                    if let selected = results.first(where: { $0.id == model.selectedID }) {
                         MapSelectionCard(
                             soundscape: selected,
                             isSaved: player.savedSoundscapeIDs.contains(selected.id),
-                            play: { Task { await player.openPlayer(selected, sequence: items, source: .map) } },
+                            play: { Task { await player.openPlayer(selected, sequence: results, source: .map) } },
                             favorite: { toggleFavorite(selected) }
                         )
                             .padding(14)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity)
+                .frame(height: DiscoveryMapLayout.mapHeight(availableHeight: proxy.size.height))
                 .padding(.horizontal, 14)
             }
             .animation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.82), value: model.selectedID)
+            }
+        }
+    }
+
+    private var searchControls: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                TextField(loc(.mapSearchPlaceholder), text: $model.query)
+                    .focused($searchFocused)
+                    .onSubmit { searchFocused = false }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .accessibilityIdentifier("map-search")
+                if !model.query.isEmpty {
+                    Button { model.query = "" } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }
+                        .accessibilityLabel(loc(.exploreClearSearch))
+                }
+            }
+            .padding(.leading, 14).padding(.trailing, 6)
+            .frame(minHeight: 48)
+            .background(SoundscapeTheme.paperRaised, in: Capsule())
+            .overlay { Capsule().stroke(SoundscapeTheme.line, lineWidth: 1) }
+            .onChange(of: model.query) {
+                model.clearArea()
+                showAll(model.results, animated: true)
+            }
+            HStack {
+                Text("\(model.results.count) \(loc(.mapResults))").font(.caption.monospacedDigit())
+                if model.areaFilter != nil {
+                    Button(loc(.mapClearArea)) { model.clearArea(); showAll(model.results, animated: true) }
+                        .font(.caption).frame(minHeight: 44)
+                }
+                Spacer()
+                Button { showsList.toggle() } label: {
+                    Label(loc(showsList ? .mapMapView : .mapListView), systemImage: showsList ? "map" : "list.bullet")
+                }
+                .font(.caption.weight(.semibold)).frame(minHeight: 44)
+                .accessibilityIdentifier("map-list-toggle")
+            }
+            .foregroundStyle(SoundscapeTheme.secondaryInk)
         }
     }
 
@@ -151,23 +234,6 @@ struct DiscoveryMapView: View {
             } catch {
                 favoriteError = .transport(String(describing: type(of: error)))
             }
-        }
-    }
-
-    private func focusSelection(in items: [Soundscape], animated: Bool) {
-        guard let selected = items.first(where: { $0.id == model.selectedID }),
-              let latitude = selected.latitude,
-              let longitude = selected.longitude else { return }
-        let update = {
-            position = .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
-                span: MKCoordinateSpan(latitudeDelta: 0.24, longitudeDelta: 0.24)
-            ))
-        }
-        if animated && !reduceMotion {
-            withAnimation(.easeInOut(duration: 0.34), update)
-        } else {
-            update()
         }
     }
 
@@ -227,7 +293,7 @@ private struct MapSelectionCard: View {
                 .buttonStyle(CircularActionStyle(
                     foreground: SoundscapeTheme.ink,
                     background: SoundscapeTheme.paperDeep,
-                    size: 40
+                    size: 44
                 ))
                 .accessibilityLabel(isSaved ? loc(.playerUnsave) : loc(.playerSave))
                 .accessibilityIdentifier("map-favorite-\(soundscape.id)")
@@ -238,8 +304,9 @@ private struct MapSelectionCard: View {
                 .buttonStyle(CircularActionStyle(
                     foreground: SoundscapeTheme.paperRaised,
                     background: SoundscapeTheme.ink,
-                    size: 40
+                    size: 44
                 ))
+                .accessibilityLabel("\(loc(.explorePlayRecording)) \(soundscape.displayTitle)")
             }
         }
         .padding(14)

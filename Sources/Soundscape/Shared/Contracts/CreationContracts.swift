@@ -131,6 +131,7 @@ struct CreateSoundscapeDraft: Sendable, Equatable {
     let personalSocial: Double
     let memoryPresent: Double
     let isPublic: Bool
+    var themeID: Int? = nil
 }
 
 struct PlayResponse: Decodable, Equatable, Sendable {

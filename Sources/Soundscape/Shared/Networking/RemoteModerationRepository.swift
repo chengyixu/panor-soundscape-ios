@@ -42,6 +42,11 @@ actor RemoteModerationRepository: ModerationRepository {
         }
     }
 
+    func createTheme(_ draft: ListeningThemeDraft) async throws -> ListeningTheme {
+        try await client.request(baseURL: environment.soundscapeAPIBaseURL,
+            path: SoundscapeAPIPath.createTheme.value, method: "POST", body: draft, authenticated: true)
+    }
+
     func pending() async throws -> [Soundscape] {
         let rows: [SoundscapeDTO] = try await client.request(
             baseURL: environment.soundscapeAPIBaseURL,

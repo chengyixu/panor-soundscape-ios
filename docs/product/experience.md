@@ -293,10 +293,18 @@ The native interaction contract was updated on 2026-09-13. This supersedes the e
 - Comments are not part of the current SOUNDSCAPE experience.
 - The current interface and implementation should not expose placeholder or disabled comment controls.
 
+## Themes and Map Discovery
+
+- Explore includes a Themes surface alongside Discover and Rankings. Themes group recordings around an ongoing topic or a dated event and do not replace sound categories.
+- The first release supports one optional primary theme per recording. Themes are created by moderators in Me → Review. All contributors choose an existing theme; the upload still enters the normal pending moderation queue.
+- A theme page offers its description, event dates, approved recordings, theme-only listening and a Record for this theme action. That action carries the chosen theme into Share without discarding audio already in a draft. Theme IDs are server-owned; no inferred historical membership or invented event metadata.
+- Map searches recording titles, creators, places, categories and themes. It is a search over Soundscape recordings, not a street-address geocoder. Panning alone does not change results: Search this area explicitly applies the current viewport. The result count and Map/List toggle make the available recordings clear; Show all clears query and area.
+- Theme feeds/counts and Map continue to exclude private, pending, removed, suspended and viewer-blocked recordings.
+
 ## Profile Avatar
 
 - The Me profile avatar opens the system photo picker for a signed-in account; signed-out taps lead to sign-in.
-- Every creator and every soundscape without custom artwork receives a consistent generated visual: 32 deterministic variations of the same Soundscape wave motif, derived from the stable creator ID or soundscape ID. Variants do not change between devices or launches. The chosen profile photo, if any, replaces only that account's locally displayed avatar.
+- Every creator, theme and soundscape without custom artwork receives seed-stable, soft Marble artwork derived from its canonical ID. The full seed changes geometry and restrained palette rather than choosing from 32 repeated line symbols. The native renderer adapts Boring Avatars' MIT-licensed Marble algorithm; its attribution is bundled with the app. Uploaded profile photos remain authoritative. See `docs/research/themes-map-avatar.md` for the source comparison and pinned revision.
 - Selected photos are orientation-corrected, center-cropped to a 256-point square, encoded as bounded opaque JPEG, and written atomically before replacing the visible avatar. A failed or canceled selection leaves the prior avatar untouched.
 - `IdentitySession.avatars` is the single observable, account-keyed portrait resolver in the app. Me, Explore, Map, Rankings, Favorites, Share and the player all use `CreatorAvatar`; a successful photo edit updates them immediately. Recording cover art remains a separate recording-level asset. Never infer identity from display names.
 - The shared Panor auth service currently has no avatar-write API. Custom photos remain **only on this device** and are never represented as a server-side public photo; generated variants require no storage to remain stable across devices. Me does not display instructional copy about changing avatars.

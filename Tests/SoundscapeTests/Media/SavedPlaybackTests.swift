@@ -305,6 +305,28 @@ final class SavedPlaybackTests: XCTestCase {
         XCTAssertEqual(player.current?.id, first.id)
     }
 
+    func testThemePlaybackNeverExpandsIntoUnrelatedCatalog() async throws {
+        let theme = ListeningTheme(id: 4, title: "Cycling", description: "", kind: .topic, startsOn: nil, endsOn: nil, recordingCount: 1)
+        var themed = first
+        themed.theme = theme
+        let repository = StubSoundscapeRepository()
+        await repository.setExploreResult(.success([second, themed]))
+        let engine = StubAudioPlaybackEngine()
+        let player = makePlayer(repository, engine)
+        try await player.loadVinylCatalog()
+        try await player.openThemePlayer(theme, startingAt: themed.id)
+        XCTAssertEqual(player.playbackCollection, .theme)
+        XCTAssertEqual(player.vinylStream.map(\.id), [themed.id])
+        try await player.loadVinylCatalog()
+        await player.commitNeedleSelection(second)
+        XCTAssertEqual(player.current?.id, themed.id)
+        engine.startPlaying()
+        engine.finish()
+        XCTAssertEqual(engine.restartCount, 1)
+        try await player.setPlaybackCollection(.all)
+        XCTAssertEqual(Set(player.vinylStream.map(\.id)), Set([themed.id, second.id]))
+    }
+
     private func makePlayer(_ repository: StubSoundscapeRepository, _ engine: StubAudioPlaybackEngine) -> AudioPlayerController {
         AudioPlayerController(repository: repository, engine: engine, audioSession: StubPlaybackAudioSession())
     }

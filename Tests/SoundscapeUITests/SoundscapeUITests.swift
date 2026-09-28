@@ -315,6 +315,46 @@ final class SoundscapeUITests: XCTestCase {
         XCTAssertTrue(app.textFields["用户名或邮箱"].waitForExistence(timeout: 8))
     }
 
+    func testThemeDiscoveryCarriesSelectedThemeIntoShare() {
+        let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] = "saved"
+        app.launch()
+        XCTAssertTrue(app.buttons["turntable-back"].waitForExistence(timeout: 12))
+        app.buttons["turntable-back"].tap()
+        app.buttons["explore-mode-themes"].tap()
+        let theme = app.buttons["theme-9"]
+        XCTAssertTrue(theme.waitForExistence(timeout: 8))
+        theme.tap()
+        let contribute = app.buttons["theme-contribute"]
+        XCTAssertTrue(contribute.waitForExistence(timeout: 8))
+        let listen = app.buttons["theme-listen"]
+        XCTAssertTrue(listen.waitForExistence(timeout: 8))
+        listen.tap()
+        XCTAssertTrue(app.buttons["playback-collection"].waitForExistence(timeout: 8))
+        XCTAssertEqual(app.buttons["playback-collection"].value as? String, "City cycling")
+        app.buttons["turntable-back"].tap()
+        XCTAssertTrue(contribute.waitForExistence(timeout: 8), "Theme navigation must survive playback and list refresh")
+        contribute.tap()
+        let selected = app.buttons["share-theme"]
+        XCTAssertTrue(selected.waitForExistence(timeout: 8))
+        XCTAssertTrue(selected.label.contains("City cycling"))
+    }
+
+    func testMapSearchCanFindThemeAndSwitchToResultsList() {
+        let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] = "saved"
+        app.launch()
+        XCTAssertTrue(app.buttons["turntable-back"].waitForExistence(timeout: 12))
+        app.buttons["turntable-back"].tap()
+        app.buttons["tab-map"].tap()
+        let search = app.textFields["map-search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 8))
+        search.tap()
+        search.typeText("City cycling\n")
+        app.buttons["map-list-toggle"].tap()
+        XCTAssertTrue(app.staticTexts["Saved rain"].waitForExistence(timeout: 8))
+    }
+
     func testPlayerPlaybackModeMenuSwitchesBetweenStandardModes() {
         let app = makeApp()
         app.launch()

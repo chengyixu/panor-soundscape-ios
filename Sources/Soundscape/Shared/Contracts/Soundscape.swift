@@ -24,8 +24,12 @@ struct Soundscape: Codable, Identifiable, Hashable, Sendable {
     let saveCount: Int
     let createdAt: String
     var world: WorldManifest = .pending
+    var theme: ListeningTheme? = nil
 
-    var hasCoordinate: Bool { latitude != nil && longitude != nil }
+    var hasCoordinate: Bool {
+        guard let latitude, let longitude else { return false }
+        return latitude.isFinite && longitude.isFinite && (-90...90).contains(latitude) && (-180...180).contains(longitude)
+    }
 
     var displayTitle: String {
         let cleaned = title.replacingOccurrences(of: "(?i)\\.wav", with: " ", options: .regularExpression)
@@ -130,9 +134,10 @@ struct SoundscapeDTO: Decodable, Sendable {
     let saveCount: Int?
     let createdAt: String?
     let world: WorldManifestDTO?
+    let theme: ListeningTheme?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, lat, lng, category, world
+        case id, title, description, lat, lng, category, world, theme
         case userID = "user_id"
         case authorName = "author_name"
         case audioURL = "audio_url"
@@ -175,6 +180,7 @@ struct SoundscapeDTO: Decodable, Sendable {
             saveCount: saveCount ?? 0,
             createdAt: createdAt ?? ""
         )
+        value.theme = theme
         value.moderationStatus = moderationStatus ?? "approved"
         value.world = world?.domain(environment: environment) ?? .pending
         return value

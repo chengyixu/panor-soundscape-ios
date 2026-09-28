@@ -12,7 +12,7 @@ final class AppShellConfigurationTests: XCTestCase {
     }
 
     func testRankingsLivesInsideExplore() {
-        XCTAssertEqual(ExploreSurfaceMode.allCases, [.discover, .rankings])
+        XCTAssertEqual(ExploreSurfaceMode.allCases, [.discover, .themes, .rankings])
         XCTAssertFalse(AppShellTab.allCases.map(\.title).contains("榜单"))
     }
 }

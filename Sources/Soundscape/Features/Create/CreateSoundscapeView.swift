@@ -7,6 +7,9 @@ struct CreateSoundscapeView: View {
     @State private var model: CreateSoundscapeViewModel
     let session: IdentitySession
     let isActive: Bool
+    let repository: any SoundscapeRepository
+    @Binding var selectedTheme: ListeningTheme?
+    @State private var showsThemePicker = false
     @State private var coverItem: PhotosPickerItem?
     @State private var showsAudioImporter = false
     @State private var showsIdentity = false
@@ -18,11 +21,14 @@ struct CreateSoundscapeView: View {
         recorder: any RecordingService,
         location: any LocationProviding,
         session: IdentitySession,
-        isActive: Bool
+        isActive: Bool,
+        selectedTheme: Binding<ListeningTheme?>
     ) {
         _model = State(initialValue: CreateSoundscapeViewModel(repository: repository, recorder: recorder, location: location))
         self.session = session
         self.isActive = isActive
+        self.repository = repository
+        self._selectedTheme = selectedTheme
     }
 
     var body: some View {
@@ -32,6 +38,20 @@ struct CreateSoundscapeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     ScreenHeader(title: loc(.createTitle))
+                    Button { showsThemePicker = true } label: {
+                        HStack {
+                            Image(systemName: "square.stack")
+                            Text(selectedTheme?.title ?? loc(.themeChoose)).lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                        .foregroundStyle(SoundscapeTheme.ink)
+                        .padding(.vertical, 10)
+                        .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.phase == .publishing)
+                    .accessibilityIdentifier("share-theme")
                     phaseContent
                 }
                 .padding(SoundscapeTheme.screenPadding)
@@ -39,6 +59,7 @@ struct CreateSoundscapeView: View {
             }
             .soundscapeScreenBackground()
             .sheet(isPresented: $showsIdentity) { IdentitySheet(session: session) }
+            .sheet(isPresented: $showsThemePicker) { ThemePickerView(repository: repository, selection: $selectedTheme) }
             .fileImporter(isPresented: $showsAudioImporter, allowedContentTypes: [.audio]) { result in
                 Task { await handleImportedAudio(result) }
             }
@@ -223,7 +244,7 @@ struct CreateSoundscapeView: View {
                 Button(loc(.createLoginToPublish)) { showsIdentity = true }.buttonStyle(PrimaryActionStyle())
             } else {
                 Button {
-                    Task { await model.publish() }
+                    Task { await model.publish(themeID: selectedTheme?.id) }
                 } label: {
                     HStack {
                         if model.phase == .publishing { ProgressView().tint(SoundscapeTheme.paperRaised) }

@@ -3,6 +3,8 @@ import Foundation
 protocol SoundscapeRepository: Sendable {
     func explore(category: String?, policy: RepositoryReadPolicy) async throws -> [Soundscape]
     func rankings(policy: RepositoryReadPolicy) async throws -> [RankingLane]
+    func themes() async throws -> [ListeningTheme]
+    func recordings(themeID: Int) async throws -> [Soundscape]
     func mine() async throws -> [Soundscape]
     func saved() async throws -> [Soundscape]
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape

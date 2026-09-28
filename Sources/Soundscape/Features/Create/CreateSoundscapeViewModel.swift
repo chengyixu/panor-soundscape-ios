@@ -159,7 +159,7 @@ final class CreateSoundscapeViewModel {
         }
     }
 
-    func publish() async {
+    func publish(themeID: Int? = nil) async {
         guard phase != .publishing else { return }
         guard let audio else { phase = .failed(.invalidRequest(loc(.errorNoAudio))); return }
         let cover: DraftCover?
@@ -182,7 +182,8 @@ final class CreateSoundscapeViewModel {
                 promptText: prompt,
                 personalSocial: personalSocial,
                 memoryPresent: memoryPresent,
-                isPublic: isPublic
+                isPublic: isPublic,
+                themeID: themeID
             ))
             phase = .published(created)
         } catch let error as AppError {

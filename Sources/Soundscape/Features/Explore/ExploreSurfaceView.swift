@@ -5,6 +5,7 @@ struct ExploreSurfaceView: View {
     let repository: any SoundscapeRepository
     let player: AudioPlayerController
     let isActive: Bool
+    let contribute: (ListeningTheme) -> Void
     @State private var mode: ExploreSurfaceMode = .discover
 
     var body: some View {
@@ -41,6 +42,8 @@ struct ExploreSurfaceView: View {
             switch mode {
             case .discover:
                 ExploreView(repository: repository, player: player, isActive: isActive)
+            case .themes:
+                ThemesView(isActive: isActive, repository: repository, player: player, contribute: contribute)
             case .rankings:
                 RankingsView(repository: repository, player: player, isActive: isActive)
             }

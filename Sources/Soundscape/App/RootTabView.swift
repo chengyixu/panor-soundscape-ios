@@ -16,6 +16,7 @@ struct RootTabView: View {
     let container: AppContainer
     @State private var selection: AppShellTab = .explore
     @State private var hasHandledForYouLaunch = false
+    @State private var contributionTheme: ListeningTheme?
     @State private var hasNavigatedSinceLaunch = false
     @State private var automaticLaunchError: AppError?
     @State private var savedSyncError: AppError?
@@ -153,7 +154,8 @@ struct RootTabView: View {
                 ExploreSurfaceView(
                     repository: container.soundscapes,
                     player: container.player,
-                    isActive: selection == .explore && container.player.presentedSoundscape == nil
+                    isActive: selection == .explore && container.player.presentedSoundscape == nil,
+                    contribute: { theme in contributionTheme = theme; selection = .contribute }
                 )
             }
 
@@ -171,7 +173,8 @@ struct RootTabView: View {
                     recorder: container.recorder,
                     location: container.location,
                     session: container.session,
-                    isActive: selection == .contribute
+                    isActive: selection == .contribute,
+                    selectedTheme: $contributionTheme
                 )
             }
 
