@@ -40,8 +40,14 @@ final class AppContainer {
         let environment = APIEnvironment.production
         let keychainService = ProcessInfo.processInfo.environment["SOUNDSCAPE_KEYCHAIN_SERVICE"]
             ?? KeychainTokenStore.defaultService
-        let tokenStore = KeychainTokenStore(service: keychainService)
-        let transport = URLSessionTransport()
+        var tokenStore: any AuthTokenStore = KeychainTokenStore(service: keychainService)
+        var transport: any HTTPTransport = URLSessionTransport()
+#if DEBUG
+        if let fixture = ProcessInfo.processInfo.environment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] {
+            tokenStore = SavedPlaybackUITestTokenStore(signedIn: fixture != "signed-out")
+            transport = SavedPlaybackUITestTransport(emptySaved: fixture == "empty")
+        }
+#endif
         let client = APIClient(transport: transport, tokenStore: tokenStore)
         let remoteSoundscapes = RemoteSoundscapeRepository(environment: environment, client: client)
         // The pre-moderation release stored public UGC on disk. Never read it

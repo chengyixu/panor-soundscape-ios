@@ -171,7 +171,7 @@ enum TurntableNavigationGesture {
 
 enum TurntablePlayerLayout {
     static let metadataGap: CGFloat = 44
-    static let metadataHeight: CGFloat = 126
+    static let metadataHeight: CGFloat = 170
     static let metadataBottomInset: CGFloat = 56
 
     static func recordDiameter(in size: CGSize) -> CGFloat {
@@ -233,6 +233,7 @@ struct TurntablePlayerView: View {
     @State private var safetyError: AppError?
     @State private var showsIdentityForBlock = false
     @State private var confirmsBlock = false
+    @State private var collectionError: AppError?
     @GestureState private var gestureActive = false
 
     var body: some View {
@@ -360,6 +361,15 @@ struct TurntablePlayerView: View {
             detailsSheet
         }
         .sheet(isPresented: $showsIdentityForBlock) { IdentitySheet(session: session) }
+        .onChange(of: player.vinylStream.map(\.id)) { _, _ in
+            cancelBrowse()
+            selection = TonearmSelection(ids: cacheCandidates(), currentID: player.current?.id)
+        }
+        .alert(loc(.playerCollection), isPresented: Binding(
+            get: { collectionError != nil }, set: { if !$0 { collectionError = nil } }
+        )) { Button(loc(.generalOK)) { collectionError = nil } } message: {
+            Text(collectionError?.userMessage ?? loc(.errorTryAgain))
+        }
         .confirmationDialog(loc(.moderationBlock), isPresented: $confirmsBlock) {
             Button(loc(.moderationBlock), role: .destructive) { Task { await blockCurrentCreator() } }
         }
@@ -414,7 +424,7 @@ struct TurntablePlayerView: View {
     }
 
     private var metadata: some View {
-        ZStack(alignment: .bottomTrailing) {
+        VStack(alignment: .leading, spacing: 12) {
             Button {
                 showsDetails = true
             } label: {
@@ -430,8 +440,7 @@ struct TurntablePlayerView: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                 }
-                .padding(.trailing, 126)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -440,8 +449,11 @@ struct TurntablePlayerView: View {
             .accessibilityHint(loc(.playerOpenDetailsHint))
             .accessibilityIdentifier("turntable-metadata")
 
-            playbackModeControl
-                .padding(.bottom, 2)
+            HStack(spacing: 10) {
+                playbackCollectionControl
+                Spacer(minLength: 0)
+                playbackModeControl
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .foregroundStyle(SoundscapeTheme.playerInk)
@@ -450,6 +462,60 @@ struct TurntablePlayerView: View {
 
     private var playbackStateLabel: String {
         player.isBuffering ? loc(.playerLoading) : (player.isPlaying ? loc(.playerNeedleOnRecord) : loc(.playerNeedleParked))
+    }
+
+    private var playbackCollectionControl: some View {
+        Menu {
+            ForEach(AudioPlayerController.PlaybackCollection.allCases, id: \.self) { collection in
+                Button {
+                    if collection == .saved, session.user == nil {
+                        showsIdentityForBlock = true
+                    } else {
+                        Task { await switchCollection(collection) }
+                    }
+                } label: {
+                    Label(collectionTitle(collection), systemImage: collection == player.playbackCollection ? "checkmark" : collectionIcon(collection))
+                }
+                .accessibilityIdentifier("playback-collection-\(collection.rawValue)")
+            }
+        } label: {
+            HStack(spacing: 7) {
+                if player.isChangingCollection { ProgressView().tint(SoundscapeTheme.playerInk) }
+                else { Image(systemName: collectionIcon(player.playbackCollection)) }
+                Text(collectionTitle(player.playbackCollection))
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .bold)).opacity(0.7)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(SoundscapeTheme.playerInk)
+            .padding(.horizontal, 11)
+            .frame(minHeight: 44)
+            .background(.white.opacity(0.08), in: Capsule())
+            .overlay { Capsule().stroke(.white.opacity(0.16), lineWidth: 1) }
+        }
+        .buttonStyle(.plain)
+        .disabled(player.isChangingCollection || player.isBrowsing || isSwitching)
+        .accessibilityLabel(loc(.playerCollection))
+        .accessibilityValue(collectionTitle(player.playbackCollection))
+        .accessibilityHint(loc(.playerCollectionHint))
+        .accessibilityIdentifier("playback-collection")
+    }
+
+    private func collectionTitle(_ collection: AudioPlayerController.PlaybackCollection) -> String {
+        loc(collection == .saved ? .playerSavedSounds : .playerAllSounds)
+    }
+
+    private func collectionIcon(_ collection: AudioPlayerController.PlaybackCollection) -> String {
+        collection == .saved ? "heart.fill" : "square.stack"
+    }
+
+    private func switchCollection(_ collection: AudioPlayerController.PlaybackCollection) async {
+        do {
+            try await player.setPlaybackCollection(collection)
+            selection = TonearmSelection(ids: cacheCandidates(), currentID: player.current?.id)
+            UISelectionFeedbackGenerator().selectionChanged()
+        } catch is CancellationError { /* A newer selection or account change won. */ }
+        catch let error as AppError { collectionError = error }
+        catch { collectionError = .transport(String(describing: type(of: error))) }
     }
 
     private var playbackModeControl: some View {
@@ -697,6 +763,7 @@ struct TurntablePlayerView: View {
         guard !isSwitching else { return }
         stopEdgeScroll()
         let ids = cacheCandidates()
+        guard !ids.isEmpty else { return }
         if selection.selectedID != player.current?.id || selection.slots.isEmpty {
             selection = TonearmSelection(ids: ids.isEmpty ? [soundscape.id] : ids, currentID: player.current?.id)
         }
@@ -803,7 +870,7 @@ struct TurntablePlayerView: View {
 
                     LazyVGrid(columns: detailColumns, spacing: 12) {
                         HStack(spacing: 12) {
-                            SoundscapeAvatar(seed: soundscape.ownerID, size: 42)
+                            CreatorAvatar(creatorID: soundscape.ownerID, size: 42)
                             detailFact(title: loc(.playerAuthor), value: soundscape.authorDisplay, icon: "person", identifier: "player-detail-author")
                         }
                         detailFact(title: loc(.playerLocation), value: soundscape.locationDisplay, icon: "location", identifier: "player-detail-location")

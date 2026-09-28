@@ -208,11 +208,22 @@ fi
 
 if rg -n 'libraryAvatarLocalOnly|Choose a photo; your avatar' Sources/Soundscape >/dev/null; then
   fail 'Me must not show avatar instructions'
-elif ! rg -q 'generatedIndex\(for userID:' Sources/Soundscape/Shared/Contracts/ProfileAvatar.swift || \
-     ! rg -q 'SoundscapeAvatar\(seed: soundscape.ownerID' Sources/Soundscape/Features/Explore/ExploreView.swift; then
-  fail 'public creators need one consistent generated avatar contract'
+elif rg -n 'SoundscapeAvatar\(' Sources/Soundscape/Features >/dev/null; then
+  fail 'creator portraits must use the shared resolver, not generated artwork directly'
+elif ! rg -q 'environment\(container.session.avatars\)' Sources/Soundscape/App/RootTabView.swift || \
+     ! rg -q 'CreatorAvatar\(creatorID: soundscape.ownerID' Sources/Soundscape/Features/Explore/ExploreView.swift; then
+  fail 'public creators need the canonical observable avatar resolver'
 else
-  pass 'consistent creator avatars without instructional copy'
+  pass 'canonical creator portraits without instructional copy'
+fi
+
+if ! rg -q 'case saved' Sources/Soundscape/Shared/Media/AudioPlayerController.swift || \
+   ! rg -q 'playbackCollection == .saved.*Self.playable\(savedSoundscapes\)' Sources/Soundscape/Shared/Media/AudioPlayerController.swift || \
+   ! rg -q 'automaticPlaybackSequence:.*vinylStream' Sources/Soundscape/Shared/Media/AudioPlayerController.swift || \
+   ! rg -q 'openSavedPlayer\(item\)' Sources/Soundscape/Features/Library/LibraryView.swift; then
+  fail 'Saved picker, advancement and Favorites must share the active playback queue'
+else
+  pass 'single Saved playback queue'
 fi
 
 if rg -n 'await enrichAutomatically\(' Sources/Soundscape/Features/Create/CreateSoundscapeViewModel.swift >/dev/null; then

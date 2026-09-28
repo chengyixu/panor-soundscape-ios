@@ -106,17 +106,18 @@ struct RootTabView: View {
                 }
             }
         }
+        .environment(container.session.avatars)
         .environment(\.locale, Locale(identifier: locale.rawValue))
         .preferredColorScheme(container.player.presentedSoundscape == nil ? .light : .dark)
         .task { await handleAutomaticLaunch() }
         .task(id: container.session.user?.id) {
-            guard container.session.user != nil else {
-                container.player.clearSavedSoundscapes()
-                return
-            }
+            // Clear the previous account before any new account fetch can return.
+            container.player.clearSavedSoundscapes()
+            guard container.session.user != nil else { return }
             do {
                 _ = try await container.player.refreshSavedSoundscapes()
-            } catch let error as AppError {
+            } catch is CancellationError { return }
+            catch let error as AppError {
                 savedSyncError = error
             } catch {
                 savedSyncError = .transport(String(describing: type(of: error)))
@@ -330,6 +331,10 @@ struct RootTabView: View {
         defer { isLaunchingPlayer = false }
         // UI tests for the other tabs deliberately start at the app shell.
 #if DEBUG
+        if ProcessInfo.processInfo.environment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] != nil {
+            await launchSavedCollectionFixture()
+            return
+        }
         let forceFirstUse = ProcessInfo.processInfo.environment["SOUNDSCAPE_FORCE_FIRST_USE"] == "1"
         if forceFirstUse { return }
         if ProcessInfo.processInfo.environment["SOUNDSCAPE_UI_TEST_AUTOPLAY"] == "1" {
@@ -383,6 +388,15 @@ struct RootTabView: View {
             automaticLaunchError = .transport(String(describing: type(of: error)))
         }
     }
+
+#if DEBUG
+    private func launchSavedCollectionFixture() async {
+        do {
+            let items = try await container.soundscapes.explore(category: nil)
+            if let first = items.first { await container.player.openPlayer(first, sequence: items) }
+        } catch { automaticLaunchError = .invalidRequest(loc(.errorNoPlayableReady)) }
+    }
+#endif
 
     private var automaticLaunchErrorBinding: Binding<Bool> {
         Binding(

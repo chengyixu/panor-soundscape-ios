@@ -158,7 +158,19 @@ actor StubSoundscapeRepository: SoundscapeRepository {
 
     private func pendingMineDelay() -> Duration? { mineDelay }
     private func currentMine() throws -> [Soundscape] { try mineResult.get() }
-    func saved() async throws -> [Soundscape] { try savedResult.get() }
+    private var savedLoadContinuation: CheckedContinuation<Void, Never>?
+    private var shouldSuspendSavedLoad = false
+    var isSavedLoadWaiting: Bool { savedLoadContinuation != nil }
+    func suspendNextSavedLoad() { shouldSuspendSavedLoad = true }
+    func resumeSavedLoad() { savedLoadContinuation?.resume(); savedLoadContinuation = nil }
+    func saved() async throws -> [Soundscape] {
+        let captured = savedResult
+        if shouldSuspendSavedLoad {
+            shouldSuspendSavedLoad = false
+            await withCheckedContinuation { savedLoadContinuation = $0 }
+        }
+        return try captured.get()
+    }
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape {
         createdDraft = draft
         return TestFixtures.soundscape

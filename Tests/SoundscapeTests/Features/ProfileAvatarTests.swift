@@ -1,4 +1,5 @@
 import UIKit
+import SwiftUI
 import XCTest
 @testable import Soundscape
 
@@ -92,6 +93,71 @@ final class ProfileAvatarTests: XCTestCase {
         XCTAssertNotEqual(session.avatar, .photo(Data([1, 2, 3])))
     }
 
+    func testAllCreatorSurfacesResolveUpdatedPhotoFromSameObservableStore() async throws {
+        let store = InMemoryProfileAvatarStore()
+        let session = IdentitySession(repository: StubIdentityRepository(), avatarStore: store)
+        try await session.login(identifier: "wilson", password: "secret")
+        let photo = Data([0xFF, 0xD8, 0xFF, 0xD9])
+        try await session.setAvatarPhoto(photo, for: "u_2")
+        XCTAssertEqual(session.avatars.avatar(for: "u_2"), .photo(photo))
+        XCTAssertEqual(session.avatars.avatar(for: "u_2"), session.avatar)
+        XCTAssertNotEqual(session.avatars.avatar(for: "other"), .photo(photo))
+        let restored = CreatorAvatarResolver(store: store)
+        try await restored.load(for: "u_2")
+        XCTAssertEqual(restored.avatar(for: "u_2"), .photo(photo))
+    }
+
+    func testCreatorAvatarRendersUpdatedPhotoWithoutReopeningScreen() async throws {
+        let session = IdentitySession(repository: StubIdentityRepository(), avatarStore: InMemoryProfileAvatarStore())
+        try await session.login(identifier: "wilson", password: "secret")
+        let portrait = CreatorAvatar(creatorID: "u_2", size: 68).environment(session.avatars)
+        let before = try XCTUnwrap(ImageRenderer(content: portrait).uiImage?.pngData())
+        let photo = UIGraphicsImageRenderer(size: CGSize(width: 68, height: 68)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 68, height: 68))
+        }
+        try await session.setAvatarPhoto(try XCTUnwrap(photo.jpegData(compressionQuality: 0.9)), for: "u_2")
+        let after = try XCTUnwrap(ImageRenderer(content: portrait).uiImage?.pngData())
+        let anotherSurface = CreatorAvatar(creatorID: "u_2", size: 68).environment(session.avatars)
+        let elsewhere = try XCTUnwrap(ImageRenderer(content: anotherSurface).uiImage?.pngData())
+        XCTAssertNotEqual(before, after)
+        XCTAssertEqual(after, elsewhere)
+    }
+
+    func testMultipleCreatorPortraitsShareOneInFlightDiskRead() async throws {
+        let store = InMemoryProfileAvatarStore()
+        let avatars = CreatorAvatarResolver(store: store)
+        await store.suspendNextLoad()
+        let first = Task { try await avatars.load(for: "u_2") }
+        for _ in 0..<1000 {
+            if await store.isWaiting { break }
+            await Task.yield()
+        }
+        let second = Task { try await avatars.load(for: "u_2") }
+        for _ in 0..<100 { await Task.yield() }
+        await store.resumeLoad()
+        try await first.value
+        try await second.value
+        let reads = await store.loadCount
+        XCTAssertEqual(reads, 1)
+    }
+
+    func testAnOlderAvatarReadCannotOverwriteANewPhoto() async throws {
+        let store = InMemoryProfileAvatarStore()
+        let avatars = CreatorAvatarResolver(store: store)
+        await store.suspendNextLoad()
+        let loading = Task { try await avatars.load(for: "u_2") }
+        for _ in 0..<1000 {
+            if await store.isWaiting { break }
+            await Task.yield()
+        }
+        let photo = Data([1, 2, 3])
+        try await avatars.save(photo: photo, for: "u_2")
+        await store.resumeLoad()
+        try await loading.value
+        XCTAssertEqual(avatars.avatar(for: "u_2"), .photo(photo))
+    }
+
     func testFailedPhotoSaveKeepsPreviousAvatarAndSurfacesError() async throws {
         let store = InMemoryProfileAvatarStore()
         let session = IdentitySession(repository: StubIdentityRepository(), avatarStore: store)
@@ -138,21 +204,26 @@ final class ProfileAvatarTests: XCTestCase {
 actor InMemoryProfileAvatarStore: ProfileAvatarStore {
     private var values: [String: ProfileAvatar] = [:]
     private(set) var creationCount = 0
+    private(set) var loadCount = 0
     private var fails = false
     private var nextLoadSuspended = false
     private var loadContinuation: CheckedContinuation<Void, Never>?
     var isWaiting: Bool { loadContinuation != nil }
 
     func avatar(for id: String) async throws -> ProfileAvatar {
+        loadCount += 1
+        let captured: ProfileAvatar
+        if let value = values[id] { captured = value }
+        else {
+            captured = .generated(ProfileAvatar.generatedIndex(for: id))
+            values[id] = captured
+            creationCount += 1
+        }
         if nextLoadSuspended {
             nextLoadSuspended = false
             await withCheckedContinuation { continuation in loadContinuation = continuation }
         }
-        if let value = values[id] { return value }
-        let value = ProfileAvatar.generated(Int.random(in: 0..<ProfileAvatar.generatedCount))
-        values[id] = value
-        creationCount += 1
-        return value
+        return captured
     }
 
     func save(photo: Data, for id: String) throws {

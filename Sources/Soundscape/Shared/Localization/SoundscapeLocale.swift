@@ -101,6 +101,12 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerMoveIndicatorHint
     case playerClosePlayer
     case playerPlaybackMode
+    case playerCollection
+    case playerCollectionHint
+    case playerAllSounds
+    case playerSavedSounds
+    case playerSavedEmpty
+    case playerSavedUnavailable
     case playerPlaybackModeHint
     case playerRepeatOne
     case playerContinuous
@@ -451,6 +457,12 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerClosePlayer: "关闭播放器"
         case .playerPlaybackMode: "播放模式"
         case .playerPlaybackModeHint: "选择声音播放结束后的播放方式"
+        case .playerCollection: "播放来源"
+        case .playerCollectionHint: "选择全部声音或只播放收藏"
+        case .playerAllSounds: "全部声音"
+        case .playerSavedSounds: "我的收藏"
+        case .playerSavedEmpty: "还没有可播放的收藏。点击声音上的爱心，将它加入收藏。"
+        case .playerSavedUnavailable: "这段声音已不在可播放的收藏中。"
         case .playerRepeatOne: "单曲循环"
         case .playerContinuous: "持续播放"
         case .playerShuffle: "随机播放"
@@ -778,6 +790,12 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerClosePlayer: "Close player"
         case .playerPlaybackMode: "Playback mode"
         case .playerPlaybackModeHint: "Choose what plays after the current sound ends"
+        case .playerCollection: "Play from"
+        case .playerCollectionHint: "Choose all sounds or only your saved recordings"
+        case .playerAllSounds: "All sounds"
+        case .playerSavedSounds: "Saved"
+        case .playerSavedEmpty: "No playable saved recordings yet. Tap a recording’s heart to add it."
+        case .playerSavedUnavailable: "This recording is no longer in your playable saved list."
         case .playerRepeatOne: "Repeat One"
         case .playerContinuous: "Continuous"
         case .playerShuffle: "Shuffle"
@@ -1105,6 +1123,12 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerClosePlayer: "關閉播放器"
         case .playerPlaybackMode: "播放模式"
         case .playerPlaybackModeHint: "選擇目前聲音結束後的播放方式"
+        case .playerCollection: "播放來源"
+        case .playerCollectionHint: "選擇全部聲音或只播放收藏"
+        case .playerAllSounds: "全部聲音"
+        case .playerSavedSounds: "我的收藏"
+        case .playerSavedEmpty: "還沒有可播放的收藏。點擊聲音上的愛心，將它加入收藏。"
+        case .playerSavedUnavailable: "這段聲音已不在可播放的收藏中。"
         case .playerRepeatOne: "單曲循環"
         case .playerContinuous: "持續播放"
         case .playerShuffle: "隨機播放"

@@ -134,13 +134,16 @@ When the user opens SOUNDSCAPE again, the app presents a soundscape selected for
 The native interaction contract was updated on 2026-09-13. This supersedes the earlier first-use gate: every cold launch opens the vinyl player and starts playback. Existing recommendation ranking is unchanged by this interaction revision.
 
 - Preserve the monochrome record, connected tonearm, persistent Back/Save actions, and the restrained metadata hierarchy below the record.
-- A compact playback-mode control sits beside the metadata rather than creating a conventional transport row. It uses familiar repeat and shuffle symbols, a native menu, and at least a 44-point hit target.
+- Two quiet monochrome capsules sit under the recording metadata: **All sounds / Saved** on the left and the playback mode on the right. They use native menus, familiar collection/heart/repeat/shuffle symbols, and at least 44-point hit targets, not a new toolbar.
+- Selecting Saved revalidates `/me/saved` and changes needle browsing, Next, continuous play and shuffle together. It keeps the current recording and elapsed position if that recording is saved; otherwise it starts the first playable saved recording. Entering Saved changes the initial Repeat One default to Continuous; an explicitly selected shuffle is retained. Repeat One remains selectable in either collection.
+- Empty, signed-out and network-error states never silently substitute the public catalog. Signing out clears a Saved queue and stops its playback. Removing the active saved recording advances within Saved; removing the last pauses rather than switching to All.
+- Opening a sound from Me → Favorites starts a freshly validated Saved queue; opening a sound elsewhere deliberately returns to All. Switching back to All refreshes the public catalog. Source choice is session-only and is not persisted as an offline snapshot.
 - Playback modes are **Repeat One** (default, preserving Soundscape's continuous-loop behavior), **Continuous** (advance through the current stream and wrap), and **Shuffle** (choose a different item from the current stream whenever possible). Changing mode never interrupts the sound already playing.
 - Drag the needle directly to browse. The current recording continues at 25% volume while dragging; candidate recordings remain silent.
 - Release on the vinyl to commit the selected recording and restore normal volume. Switching recordings overlaps audio for 300ms once the incoming stream is playing. Releasing on the current recording preserves its playback position.
 - Move the needle right, off the vinyl, and release to pause and park. Drag it back onto the vinyl and release to resume.
 - There is no tap-to-lift or separate lower-to-play step. VoiceOver retains explicit play/pause actions.
-- The picker includes all available playable public recordings, regardless of the original entry sequence or saved favorites.
+- The picker follows the selected collection: all available playable public recordings in All, or only freshly resolved saved recordings in Saved. Recommendation/current items never leak into Saved.
 - The visible window contains at most five unique playable recordings.
 - For up to five recordings, the current recording starts on the middle groove; other recordings are randomly assigned to the remaining grooves once and remain stable during browsing. Empty grooves do not duplicate tracks.
 - Longer queues start with the current recording centered. Holding the needle at the upper/lower boundary begins scrolling after 550ms and advances every 380ms while held, wrapping endlessly in either direction. Movement between the five slots never scrolls the window.
@@ -295,6 +298,7 @@ The native interaction contract was updated on 2026-09-13. This supersedes the e
 - The Me profile avatar opens the system photo picker for a signed-in account; signed-out taps lead to sign-in.
 - Every creator and every soundscape without custom artwork receives a consistent generated visual: 32 deterministic variations of the same Soundscape wave motif, derived from the stable creator ID or soundscape ID. Variants do not change between devices or launches. The chosen profile photo, if any, replaces only that account's locally displayed avatar.
 - Selected photos are orientation-corrected, center-cropped to a 256-point square, encoded as bounded opaque JPEG, and written atomically before replacing the visible avatar. A failed or canceled selection leaves the prior avatar untouched.
+- `IdentitySession.avatars` is the single observable, account-keyed portrait resolver in the app. Me, Explore, Map, Rankings, Favorites, Share and the player all use `CreatorAvatar`; a successful photo edit updates them immediately. Recording cover art remains a separate recording-level asset. Never infer identity from display names.
 - The shared Panor auth service currently has no avatar-write API. Custom photos remain **only on this device** and are never represented as a server-side public photo; generated variants require no storage to remain stable across devices. Me does not display instructional copy about changing avatars.
 
 ## Sharing a Soundscape
@@ -306,21 +310,11 @@ The native interaction contract was updated on 2026-09-13. This supersedes the e
 
 ## Saved Soundscapes
 
-- Me includes a Favorites subtab backed by the authenticated saved-soundscape collection. It lists sounds saved from Map or the player and supports playback and removal.
-
-- Saving preserves an immutable snapshot of the exact experience the user received.
-- The snapshot includes the audio composition, loop behavior, title, Source Line, and displayed context needed to replay that version.
-- Future algorithm or content changes must not silently mutate a saved soundscape.
-- Anonymous users can save snapshots locally on their device.
-- A locally saved snapshot includes the audio and metadata needed for complete offline replay.
-- SOUNDSCAPE reports Save as successful only after the offline snapshot is actually available on the device.
-- If device storage is insufficient, the user receives a clear recovery message rather than a false saved state.
-- The Saved sheet shows local storage usage and allows downloaded snapshots to be removed.
-- Account login enables cloud backup and cross-device synchronization of saved snapshots.
-- The persistent top-right Save heart toggles the active immutable snapshot's saved state.
-- The Saved collection opens from Me or the Playback Metadata details sheet rather than through a playback toolbar.
-- Selecting a saved snapshot crossfades directly into that saved soundscape.
-- Dismissing the Saved collection returns to the current turntable experience.
+- Me includes a Favorites subtab backed by authenticated `/me/saved`. The Map and player hearts mutate the same backend collection; the UI reflects success only after the mutation succeeds.
+- Saved is an account bookmark collection, **not** a downloaded or immutable offline audio snapshot. The server omits removed, blocked, private and unapproved recordings; unavailable media cannot be replayed from an old public cache.
+- The player retains only the active session's validated saved list. Needle browsing, next/automatic advancement and the player-source label derive from that list, not a second recommendation copy.
+- Selecting a favorite revalidates the list and opens the Saved player. The All sounds / Saved source capsule switches queues without adding top-level chrome.
+- Signing out or changing accounts clears the old saved list. A late request cannot restore it. Removing the last saved recording pauses rather than silently continuing into the public pool.
 
 ## Shared Soundscapes
 

@@ -266,7 +266,7 @@ struct CreateSoundscapeView: View {
                     Text(loc(.coverAIBadge)).font(.caption2.bold()).padding(6).background(.ultraThinMaterial).clipShape(Capsule()).padding(6)
                 }
         } else {
-            SoundscapeAvatar(seed: session.user?.id ?? "guest", size: 112)
+            CreatorAvatar(creatorID: session.user?.id ?? "guest", size: 112)
                 .overlay {
                     if model.phase == .generatingCover { ProgressView().tint(.white) }
                 }

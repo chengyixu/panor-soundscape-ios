@@ -238,14 +238,7 @@ struct LibraryView: View {
 
     private var profileAvatar: some View {
         ZStack {
-            SoundscapeAvatar(
-                seed: session.user?.id ?? "guest",
-                size: 68,
-                photo: {
-                    guard case .photo(let data) = session.avatar else { return nil }
-                    return data
-                }()
-            )
+            CreatorAvatar(creatorID: session.user?.id ?? "guest", size: 68)
             if isSavingAvatar { ProgressView().tint(.white) }
         }
         .accessibilityHidden(true)
@@ -369,7 +362,14 @@ struct LibraryView: View {
                 ForEach(items) { item in
                     FavoriteSoundscapeRow(
                         item: item,
-                        play: { Task { await player.openPlayer(item, sequence: items, source: .library) } },
+                        play: {
+                            Task {
+                                do { try await player.openSavedPlayer(item) }
+                                catch is CancellationError { return }
+                                catch let error as AppError { favoriteActionError = error }
+                                catch { favoriteActionError = .transport(String(describing: type(of: error))) }
+                            }
+                        },
                         remove: {
                             Task {
                                 do {
@@ -413,7 +413,7 @@ private struct FavoriteSoundscapeRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.displayTitle).font(.headline).lineLimit(1)
                 HStack(spacing: 6) {
-                    SoundscapeAvatar(seed: item.ownerID, size: 22)
+                    CreatorAvatar(creatorID: item.ownerID, size: 22)
                     Text(item.authorDisplay).font(.subheadline).foregroundStyle(SoundscapeTheme.secondaryInk).lineLimit(1)
                 }
                 Text("\(item.locationDisplay)  ·  \(item.durationDisplay)")

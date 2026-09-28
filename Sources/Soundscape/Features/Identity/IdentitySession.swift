@@ -5,31 +5,27 @@ import Observation
 @Observable
 final class IdentitySession {
     private(set) var user: PanorUser?
-    private(set) var avatar: ProfileAvatar?
+    let avatars: CreatorAvatarResolver
+    var avatar: ProfileAvatar? { user.flatMap { avatars.cachedAvatar(for: $0.id) } }
     private(set) var avatarError: AppError?
     private(set) var isRestoring = false
     private(set) var error: AppError?
 
     private let repository: any IdentityRepository
-    private let avatarStore: any ProfileAvatarStore
 
     init(repository: any IdentityRepository, avatarStore: any ProfileAvatarStore) {
         self.repository = repository
-        self.avatarStore = avatarStore
+        self.avatars = CreatorAvatarResolver(store: avatarStore)
     }
 
     private func assignUser(_ next: PanorUser?) async {
-        guard let next else { user = nil; avatar = nil; avatarError = nil; return }
-        if user?.id != next.id { avatar = nil }
+        guard let next else { user = nil; avatarError = nil; return }
         user = next
         do {
-            let resolved = try await avatarStore.avatar(for: next.id)
-            if user?.id == next.id { avatar = resolved; avatarError = nil }
+            try await avatars.load(for: next.id)
+            if user?.id == next.id { avatarError = nil }
         } catch {
-            if user?.id == next.id {
-                avatar = nil
-                avatarError = .invalidRequest(loc(.errorCannotProcessImage))
-            }
+            if user?.id == next.id { avatarError = .invalidRequest(loc(.errorCannotProcessImage)) }
         }
     }
 
@@ -39,8 +35,8 @@ final class IdentitySession {
 
     func setAvatarPhoto(_ data: Data, for userID: String) async throws {
         guard user?.id == userID else { throw AppError.authenticationRequired }
-        try await avatarStore.save(photo: data, for: userID)
-        if user?.id == userID { avatar = .photo(data); avatarError = nil }
+        try await avatars.save(photo: data, for: userID)
+        if user?.id == userID { avatarError = nil }
     }
 
     func restore() async {
@@ -89,7 +85,6 @@ final class IdentitySession {
         do {
             try await repository.logout()
             user = nil
-            avatar = nil
             avatarError = nil
             error = nil
         } catch let appError as AppError {

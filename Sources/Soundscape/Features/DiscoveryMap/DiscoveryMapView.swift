@@ -208,7 +208,7 @@ private struct MapSelectionCard: View {
                     .foregroundStyle(SoundscapeTheme.ink)
                     .lineLimit(1)
                 HStack(spacing: 6) {
-                    SoundscapeAvatar(seed: soundscape.ownerID, size: 20)
+                    CreatorAvatar(creatorID: soundscape.ownerID, size: 20)
                     Text("\(soundscape.authorDisplay) · \(soundscape.categoryDisplay)")
                         .font(.caption)
                         .foregroundStyle(SoundscapeTheme.secondaryInk)

@@ -82,7 +82,7 @@ private struct CDCard: View {
                 }
                 Text(soundscape.displayTitle).font(.headline).foregroundStyle(SoundscapeTheme.ink).lineLimit(1)
                 HStack(spacing: 6) {
-                    SoundscapeAvatar(seed: soundscape.ownerID, size: 22)
+                    CreatorAvatar(creatorID: soundscape.ownerID, size: 22)
                     Text(soundscape.authorDisplay).lineLimit(1)
                 }
                 .font(.caption)

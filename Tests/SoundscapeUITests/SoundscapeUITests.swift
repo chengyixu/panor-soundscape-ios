@@ -220,17 +220,20 @@ final class SoundscapeUITests: XCTestCase {
 
     func testOpensTurntablePlayer() {
         let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] = "saved"
         app.launch()
-
-        openTurntable(in: app)
+        XCTAssertTrue(app.otherElements["turntable-player"].waitForExistence(timeout: 12))
         XCTAssertTrue(app.buttons["turntable-back"].waitForExistence(timeout: 3))
         let metadata = app.buttons["turntable-metadata"]
         XCTAssertTrue(metadata.waitForExistence(timeout: 3))
-        XCTAssertGreaterThan(
-            metadata.frame.maxY,
-            app.frame.maxY - 90,
-            "Player metadata must sit near the bottom safe area instead of leaving a dead lower panel."
-        )
+        let collection = app.buttons["playback-collection"]
+        let mode = app.buttons["playback-mode"]
+        XCTAssertTrue(collection.exists && mode.exists)
+        XCTAssertLessThanOrEqual(metadata.frame.maxY, collection.frame.minY)
+        XCTAssertEqual(collection.frame.midY, mode.frame.midY, accuracy: 2)
+        XCTAssertGreaterThan(collection.frame.maxY, app.frame.maxY - 90,
+                             "The metadata controls must anchor the bottom of the player")
+        XCTAssertLessThanOrEqual(collection.frame.maxX, mode.frame.minX)
         XCTAssertFalse(app.buttons["vinyl-player-indicator"].exists)
         capture("Soundscape-Turntable")
     }
@@ -262,6 +265,54 @@ final class SoundscapeUITests: XCTestCase {
         app.buttons["turntable-metadata"].tap()
         XCTAssertTrue(app.buttons["report-soundscape"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["block-creator"].waitForExistence(timeout: 5))
+    }
+
+    func testSavedPlaybackCollectionSwitchesWithoutLeavingTurntable() {
+        let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] = "saved"
+        app.launch()
+        let collection = app.buttons["playback-collection"]
+        XCTAssertTrue(collection.waitForExistence(timeout: 12))
+        XCTAssertEqual(collection.value as? String, "全部声音")
+        XCTAssertGreaterThanOrEqual(collection.frame.height, 44)
+        collection.tap()
+        app.buttons["playback-collection-saved"].tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "我的收藏"), object: collection)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 8), .completed)
+        XCTAssertTrue(app.buttons["turntable-metadata"].label.contains("Saved"))
+        XCTAssertTrue(app.buttons["playback-mode"].label.contains("持续播放"))
+        collection.tap()
+        app.buttons["playback-collection-all"].tap()
+        let all = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "全部声音"), object: collection)
+        XCTAssertEqual(XCTWaiter.wait(for: [all], timeout: 8), .completed)
+        XCTAssertTrue(app.otherElements["turntable-player"].exists)
+    }
+
+    func testEmptySavedCollectionKeepsCurrentSoundAndExplainsHowToAdd() {
+        let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] = "empty"
+        app.launch()
+        let collection = app.buttons["playback-collection"]
+        XCTAssertTrue(collection.waitForExistence(timeout: 12))
+        collection.tap()
+        app.buttons["playback-collection-saved"].tap()
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 8))
+        XCTAssertTrue(alert.staticTexts["还没有可播放的收藏。点击声音上的爱心，将它加入收藏。"].exists)
+        alert.buttons.firstMatch.tap()
+        XCTAssertEqual(collection.value as? String, "全部声音")
+        XCTAssertTrue(app.buttons["turntable-metadata"].label.contains("All forest"))
+    }
+
+    func testSavedCollectionForSignedOutListenerOpensSignIn() {
+        let app = makeApp()
+        app.launchEnvironment["SOUNDSCAPE_UI_TEST_SAVED_COLLECTION"] = "signed-out"
+        app.launch()
+        let collection = app.buttons["playback-collection"]
+        XCTAssertTrue(collection.waitForExistence(timeout: 12))
+        collection.tap()
+        app.buttons["playback-collection-saved"].tap()
+        XCTAssertTrue(app.textFields["用户名或邮箱"].waitForExistence(timeout: 8))
     }
 
     func testPlayerPlaybackModeMenuSwitchesBetweenStandardModes() {

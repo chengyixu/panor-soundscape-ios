@@ -358,7 +358,7 @@ private struct TopSoundscapeResult: View {
                         .foregroundStyle(SoundscapeTheme.ink)
                         .lineLimit(2)
                     HStack(spacing: 7) {
-                        SoundscapeAvatar(seed: soundscape.ownerID, size: 24)
+                        CreatorAvatar(creatorID: soundscape.ownerID, size: 24)
                         Text(soundscape.authorDisplay)
                             .font(.subheadline)
                             .foregroundStyle(SoundscapeTheme.secondaryInk)
@@ -408,7 +408,7 @@ private struct SoundscapeSearchRow: View {
                         .foregroundStyle(SoundscapeTheme.ink)
                         .lineLimit(1)
                     HStack(spacing: 6) {
-                        SoundscapeAvatar(seed: soundscape.ownerID, size: 22)
+                        CreatorAvatar(creatorID: soundscape.ownerID, size: 22)
                         Text("\(soundscape.authorDisplay) · \(soundscape.categoryDisplay)")
                             .font(.subheadline)
                             .foregroundStyle(SoundscapeTheme.secondaryInk)
