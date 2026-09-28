@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ThemesView: View {
+    let isActive: Bool
     let repository: any SoundscapeRepository
     let player: AudioPlayerController
     let contribute: (ListeningTheme) -> Void
@@ -38,7 +39,7 @@ struct ThemesView: View {
                 .padding(SoundscapeTheme.screenPadding)
             }
             .soundscapeScreenBackground()
-            .task { await load() }
+            .task(id: isActive) { if isActive { await load() } }
             .refreshable { await load() }
         }
     }

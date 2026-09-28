@@ -43,7 +43,7 @@ struct ExploreSurfaceView: View {
             case .discover:
                 ExploreView(repository: repository, player: player, isActive: isActive)
             case .themes:
-                ThemesView(repository: repository, player: player, contribute: contribute)
+                ThemesView(isActive: isActive, repository: repository, player: player, contribute: contribute)
             case .rankings:
                 RankingsView(repository: repository, player: player, isActive: isActive)
             }

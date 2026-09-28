@@ -72,7 +72,6 @@ struct DiscoveryMapView: View {
                                 isSaved: player.savedSoundscapeIDs.contains(item.id),
                                 play: { Task { await player.openPlayer(item, sequence: results, source: .map) } },
                                 favorite: { toggleFavorite(item) })
-                                .onTapGesture { model.selectedID = item.id; showsList = false; focusSelection(in: results, animated: true) }
                         }
                     }
                     .padding(.horizontal, 14)
@@ -238,23 +237,6 @@ struct DiscoveryMapView: View {
         }
     }
 
-    private func focusSelection(in items: [Soundscape], animated: Bool) {
-        guard let selected = items.first(where: { $0.id == model.selectedID }),
-              let latitude = selected.latitude,
-              let longitude = selected.longitude else { return }
-        let update = {
-            position = .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
-                span: MKCoordinateSpan(latitudeDelta: 0.24, longitudeDelta: 0.24)
-            ))
-        }
-        if animated && !reduceMotion {
-            withAnimation(.easeInOut(duration: 0.34), update)
-        } else {
-            update()
-        }
-    }
-
     private func showAll(_ items: [Soundscape], animated: Bool) {
         guard let region = DiscoveryMapViewport.overviewRegion(for: items) else { return }
         let update = { position = .region(region) }
@@ -311,7 +293,7 @@ private struct MapSelectionCard: View {
                 .buttonStyle(CircularActionStyle(
                     foreground: SoundscapeTheme.ink,
                     background: SoundscapeTheme.paperDeep,
-                    size: 40
+                    size: 44
                 ))
                 .accessibilityLabel(isSaved ? loc(.playerUnsave) : loc(.playerSave))
                 .accessibilityIdentifier("map-favorite-\(soundscape.id)")
@@ -322,8 +304,9 @@ private struct MapSelectionCard: View {
                 .buttonStyle(CircularActionStyle(
                     foreground: SoundscapeTheme.paperRaised,
                     background: SoundscapeTheme.ink,
-                    size: 40
+                    size: 44
                 ))
+                .accessibilityLabel("\(loc(.explorePlayRecording)) \(soundscape.displayTitle)")
             }
         }
         .padding(14)
