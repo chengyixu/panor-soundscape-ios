@@ -466,7 +466,7 @@ struct TurntablePlayerView: View {
 
     private var playbackCollectionControl: some View {
         Menu {
-            ForEach(AudioPlayerController.PlaybackCollection.allCases, id: \.self) { collection in
+            ForEach(AudioPlayerController.PlaybackCollection.allCases.filter { $0 != .theme || player.activeTheme != nil }, id: \.self) { collection in
                 Button {
                     if collection == .saved, session.user == nil {
                         showsIdentityForBlock = true
@@ -482,7 +482,7 @@ struct TurntablePlayerView: View {
             HStack(spacing: 7) {
                 if player.isChangingCollection { ProgressView().tint(SoundscapeTheme.playerInk) }
                 else { Image(systemName: collectionIcon(player.playbackCollection)) }
-                Text(collectionTitle(player.playbackCollection))
+                Text(collectionTitle(player.playbackCollection)).lineLimit(1).frame(maxWidth: 120)
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .bold)).opacity(0.7)
             }
             .font(.caption.weight(.semibold))
@@ -501,7 +501,11 @@ struct TurntablePlayerView: View {
     }
 
     private func collectionTitle(_ collection: AudioPlayerController.PlaybackCollection) -> String {
-        loc(collection == .saved ? .playerSavedSounds : .playerAllSounds)
+        switch collection {
+        case .all: loc(.playerAllSounds)
+        case .saved: loc(.playerSavedSounds)
+        case .theme: player.activeTheme?.title ?? loc(.themeTitle)
+        }
     }
 
     private func collectionIcon(_ collection: AudioPlayerController.PlaybackCollection) -> String {

@@ -367,10 +367,13 @@ final class AudioPlayerController {
     enum PlaybackCollection: String, CaseIterable, Equatable, Sendable {
         case all
         case saved
+        case theme
     }
 
     private(set) var playbackCollection: PlaybackCollection = .all
     private(set) var isChangingCollection = false
+    private(set) var activeTheme: ListeningTheme?
+    private var themeSoundscapes: [Soundscape] = []
     private var collectionGeneration = 0
     private var savedRevision = 0
     private(set) var current: Soundscape?
@@ -402,6 +405,7 @@ final class AudioPlayerController {
     private(set) var availableSoundscapes: [Soundscape] = []
     var vinylStream: [Soundscape] {
         if playbackCollection == .saved { return Self.playable(savedSoundscapes) }
+        if playbackCollection == .theme { return Self.playable(themeSoundscapes) }
         return Self.playable(availableSoundscapes + recommendationStream + [current].compactMap { $0 })
     }
     private var recommendationContexts: [Int: RecommendationContext] = [:]
@@ -445,6 +449,8 @@ final class AudioPlayerController {
     ) async {
         invalidateCollectionChange()
         playbackCollection = .all
+        activeTheme = nil
+        themeSoundscapes = []
         if source != .madeForYou {
             recommendationContexts = [:]
             recordedImpressionKeys = []
@@ -483,6 +489,10 @@ final class AudioPlayerController {
     }
 
     func loadVinylCatalog() async throws {
+        if playbackCollection == .theme {
+            try await changeCollection(.theme, startingAt: nil)
+            return
+        }
         if playbackCollection == .saved {
             _ = try await refreshSavedSoundscapes()
             return
@@ -500,23 +510,32 @@ final class AudioPlayerController {
         try await changeCollection(.saved, startingAt: soundscape.id)
     }
 
-    private func changeCollection(_ collection: PlaybackCollection, startingAt id: Int?) async throws {
+    func openThemePlayer(_ theme: ListeningTheme, startingAt id: Int? = nil) async throws {
+        try await changeCollection(.theme, startingAt: id, theme: theme)
+        if let current { presentedSoundscape = current }
+    }
+
+    private func changeCollection(_ collection: PlaybackCollection, startingAt id: Int?, theme: ListeningTheme? = nil) async throws {
         collectionGeneration += 1
         let generation = collectionGeneration
         let revision = savedRevision
         isChangingCollection = true
         defer { if generation == collectionGeneration { isChangingCollection = false } }
         let fetched: [Soundscape]
+        let requestedTheme = theme ?? activeTheme
         do {
             switch collection {
             case .all: fetched = try await repository.explore(category: nil, policy: .reloadIgnoringCache)
             case .saved: fetched = try await repository.saved()
+            case .theme:
+                guard let requestedTheme else { throw AppError.invalidRequest(loc(.errorInvalidParams)) }
+                fetched = try await repository.recordings(themeID: requestedTheme.id)
             }
         } catch {
             if generation == collectionGeneration, revision == savedRevision,
-               collection == .saved, playbackCollection == .saved, !(error is CancellationError) {
-                savedRevision += 1
-                savedSoundscapes = []
+               collection != .all, playbackCollection == collection, !(error is CancellationError) {
+                if collection == .saved { savedRevision += 1; savedSoundscapes = [] }
+                else { themeSoundscapes = [] }
                 pause()
             }
             throw error
@@ -525,24 +544,27 @@ final class AudioPlayerController {
         guard generation == collectionGeneration, revision == savedRevision else { throw CancellationError() }
         let items = Self.playable(fetched)
         guard let first = items.first else {
-            if collection == .saved, playbackCollection == .saved {
-                savedRevision += 1
-                savedSoundscapes = fetched
+            if collection != .all, playbackCollection == collection {
+                if collection == .saved { savedRevision += 1; savedSoundscapes = fetched }
+                else { themeSoundscapes = [] }
                 pause()
             }
             throw AppError.invalidRequest(loc(collection == .saved ? .playerSavedEmpty : .errorNoPlayableReady))
         }
         if let id, !items.contains(where: { $0.id == id }) {
-            throw AppError.invalidRequest(loc(.playerSavedUnavailable))
+            throw AppError.invalidRequest(loc(collection == .saved ? .playerSavedUnavailable : .errorNoPlayableReady))
         }
         if collection == .saved {
             savedRevision += 1
             savedSoundscapes = fetched
+        } else if collection == .theme {
+            themeSoundscapes = items
+            activeTheme = requestedTheme
         } else {
             availableSoundscapes = items
             recommendationStream = items
         }
-        if collection == .saved, playbackCollection != .saved, playbackMode == .repeatOne {
+        if collection != .all, playbackCollection != collection, playbackMode == .repeatOne {
             playbackMode = .continuous
         }
         playbackCollection = collection
@@ -574,13 +596,14 @@ final class AudioPlayerController {
         invalidateCollectionChange()
         savedRevision += 1
         savedSoundscapes.removeAll { $0.ownerID == creatorID }
+        themeSoundscapes.removeAll { $0.ownerID == creatorID }
         if current?.ownerID == creatorID || presentedSoundscape?.ownerID == creatorID { stop() }
         availableSoundscapes.removeAll { $0.ownerID == creatorID }
         recommendationStream.removeAll { $0.ownerID == creatorID }
     }
 
     func commitNeedleSelection(_ candidate: Soundscape) async {
-        if playbackCollection == .saved, !vinylStream.contains(where: { $0.id == candidate.id }) { return }
+        if playbackCollection != .all, !vinylStream.contains(where: { $0.id == candidate.id }) { return }
         isBrowsing = false
         if current?.id == candidate.id {
             engine.setVolume(1, duration: 0.3)
@@ -641,7 +664,7 @@ final class AudioPlayerController {
 
     func candidate(relativeOffset: Int) -> Soundscape? {
         let sequence = automaticPlaybackSequence
-        guard !sequence.isEmpty else { return playbackCollection == .saved ? nil : current }
+        guard !sequence.isEmpty else { return playbackCollection != .all ? nil : current }
         let center = current.flatMap { active in sequence.firstIndex { $0.id == active.id } } ?? 0
         return sequence[(center + relativeOffset).modulo(sequence.count)]
     }
@@ -682,7 +705,7 @@ final class AudioPlayerController {
         invalidateCollectionChange()
         savedRevision += 1
         savedSoundscapes = []
-        if playbackCollection == .saved { stop() }
+        if playbackCollection != .all { stop() }
     }
 
     private func reconcileSavedPlayback() async {
@@ -732,7 +755,7 @@ final class AudioPlayerController {
     }
 
     func play(_ soundscape: Soundscape, crossfade: Bool = false) async {
-        guard playbackCollection != .saved || vinylStream.contains(where: { $0.id == soundscape.id }) else {
+        guard playbackCollection == .all || vinylStream.contains(where: { $0.id == soundscape.id }) else {
             error = .invalidRequest(loc(.playerSavedUnavailable))
             return
         }
@@ -795,6 +818,8 @@ final class AudioPlayerController {
     func stop() {
         invalidateCollectionChange()
         playbackCollection = .all
+        activeTheme = nil
+        themeSoundscapes = []
         isBrowsing = false
         playbackRequestGeneration += 1
         reportCurrentPlay()
@@ -831,7 +856,7 @@ final class AudioPlayerController {
 
     private func resume() async {
         guard let current else { return }
-        guard playbackCollection != .saved || vinylStream.contains(where: { $0.id == current.id }) else {
+        guard playbackCollection == .all || vinylStream.contains(where: { $0.id == current.id }) else {
             error = .invalidRequest(loc(.playerSavedUnavailable))
             return
         }
@@ -910,7 +935,7 @@ final class AudioPlayerController {
 
     private func handlePlaybackEnded() {
         guard playbackRequested else { return }
-        if playbackCollection == .saved, !vinylStream.contains(where: { $0.id == current?.id }) {
+        if playbackCollection != .all, !vinylStream.contains(where: { $0.id == current?.id }) {
             pause()
             return
         }

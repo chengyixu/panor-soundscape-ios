@@ -113,6 +113,9 @@ actor StubSoundscapeRepository: SoundscapeRepository {
     var rankingResult: Result<[RankingLane], AppError> = .success([])
     var mineResult: Result<[Soundscape], AppError> = .success([])
     var savedResult: Result<[Soundscape], AppError> = .success([])
+    var themesResult: Result<[ListeningTheme], AppError> = .success([])
+    func themes() async throws -> [ListeningTheme] { try themesResult.get() }
+    func recordings(themeID: Int) async throws -> [Soundscape] { try exploreResult.get().filter { $0.theme?.id == themeID } }
     var toggleSaveResult: Result<SaveResponse, AppError> = .success(SaveResponse(saved: true, saveCount: 3))
     var createdDraft: CreateSoundscapeDraft?
     var titleResult: Result<TitleSuggestion, AppError> = .success(TitleSuggestion(title: "雨落站台", description: "列车离开后，雨声留在空站台。"))

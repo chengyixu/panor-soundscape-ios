@@ -14,12 +14,14 @@ actor SavedPlaybackUITestTransport: HTTPTransport {
               let audio = Bundle.main.url(forResource: "AutoplayTestTone", withExtension: "m4a") else {
             throw AppError.invalidRequest(loc(.errorNoAudio))
         }
+        let theme: [String: Any] = ["id": 9, "title": "City cycling", "description": "Along the route", "kind": "topic", "recording_count": 3]
         let rows: [[String: Any]] = [
             (9001, "All forest"), (9002, "Saved rain"), (9003, "Saved shore")
         ].map { id, title in
             ["id": id, "user_id": "ui-creator", "author_name": "Soundscape", "title": title,
              "audio_url": audio.absoluteString, "category": SoundscapeCategory.nature.rawValue, "duration_sec": 3,
-             "is_public": 1, "moderation_status": "approved"]
+             "is_public": 1, "moderation_status": "approved", "theme": theme,
+             "lat": 22.3, "lng": 114.2, "location_name": "Harbour"]
         }
         let payload: Any
         var status = 200
@@ -29,7 +31,8 @@ actor SavedPlaybackUITestTransport: HTTPTransport {
         switch path {
         case environment.authAPIBaseURL.path + AuthAPIPath.me.rawValue:
             payload = ["success": true, "user": ["id": "ui-listener", "name": "Listener", "email": "listener@example.invalid"]]
-        case SoundscapeAPIPath.soundscapes.value: payload = rows
+        case SoundscapeAPIPath.soundscapes.value, SoundscapeAPIPath.themeRecordings(9).value: payload = rows
+        case SoundscapeAPIPath.themes.value: payload = [theme]
         case SoundscapeAPIPath.savedSoundscapes.value: payload = emptySaved ? [] : rows.filter { savedIDs.contains($0["id"] as! Int) }
         case SoundscapeAPIPath.mySoundscapes.value, SoundscapeAPIPath.rankings.value: payload = []
         case SoundscapeAPIPath.moderatorAccess.value: status = 403; payload = ["detail": "moderator access required"]

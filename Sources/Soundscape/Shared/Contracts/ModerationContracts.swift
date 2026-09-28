@@ -20,6 +20,7 @@ protocol ModerationRepository: Sendable {
     func report(soundscapeID: Int, reason: String) async throws
     func block(creatorID: String) async throws
     func hasModeratorAccess() async throws -> Bool
+    func createTheme(_ draft: ListeningThemeDraft) async throws -> ListeningTheme
     func pending() async throws -> [Soundscape]
     func reports() async throws -> [ModerationReport]
     func previewAudio(soundscapeID: Int) async throws -> Data

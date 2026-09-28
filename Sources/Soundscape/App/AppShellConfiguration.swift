@@ -40,6 +40,7 @@ enum AppShellTab: String, CaseIterable, Hashable {
 
 enum ExploreSurfaceMode: String, CaseIterable, Hashable {
     case discover
+    case themes
     case rankings
 
     var title: String {
@@ -49,6 +50,7 @@ enum ExploreSurfaceMode: String, CaseIterable, Hashable {
     func title(for locale: AppLocale) -> String {
         switch self {
         case .discover: SoundscapeLocale.tabExploreSubtitle.localized(for: locale)
+        case .themes: SoundscapeLocale.themeTitle.localized(for: locale)
         case .rankings: SoundscapeLocale.tabRankingsSubtitle.localized(for: locale)
         }
     }

@@ -117,6 +117,28 @@ enum SoundscapeLocale: CaseIterable, Sendable {
     case playerResonates
     case playerNotNow
     case playerLessLikeThis
+    case themeTitle
+    case themeTopic
+    case themeEvent
+    case themeChoose
+    case themeNone
+    case themeEmpty
+    case themeContribute
+    case themeListen
+    case themeCreate
+    case themeName
+    case themeDescription
+    case themeStarts
+    case themeEnds
+    case themeHasEnd
+    case themeRecordings
+    case mapSearchPlaceholder
+    case mapSearchArea
+    case mapClearArea
+    case mapNoResults
+    case mapResults
+    case mapListView
+    case mapMapView
     case moderationQueue
     case moderationTab
     case moderationContact
@@ -472,6 +494,28 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerResonates: "有共鸣"
         case .playerNotNow: "不是现在"
         case .playerLessLikeThis: "少推荐这类"
+        case .themeTitle: "主题"
+        case .themeTopic: "长期主题"
+        case .themeEvent: "活动"
+        case .themeChoose: "添加主题"
+        case .themeNone: "不添加主题"
+        case .themeEmpty: "这里还没有主题。新主题由管理员策划，所有人都可以贡献录音。"
+        case .themeContribute: "为主题录音"
+        case .themeListen: "聆听主题"
+        case .themeCreate: "创建主题"
+        case .themeName: "主题名称"
+        case .themeDescription: "主题简介"
+        case .themeStarts: "开始日期"
+        case .themeEnds: "结束日期"
+        case .themeHasEnd: "包含结束日期"
+        case .themeRecordings: "段录音"
+        case .mapSearchPlaceholder: "搜索声音、地点或主题"
+        case .mapSearchArea: "搜索此区域"
+        case .mapClearArea: "不限区域"
+        case .mapNoResults: "没有找到录音。换个关键词，或扩大搜索区域。"
+        case .mapResults: "段录音"
+        case .mapListView: "列表"
+        case .mapMapView: "地图"
         case .moderationQueue: "内容审核"
         case .moderationTab: "审核"
         case .moderationContact: "联系支持：support@panor.tech"
@@ -805,6 +849,28 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerResonates: "Resonates"
         case .playerNotNow: "Not now"
         case .playerLessLikeThis: "Less like this"
+        case .themeTitle: "Themes"
+        case .themeTopic: "Ongoing topic"
+        case .themeEvent: "Event"
+        case .themeChoose: "Add a theme"
+        case .themeNone: "No theme"
+        case .themeEmpty: "No themes yet. Moderators curate themes; everyone can contribute recordings."
+        case .themeContribute: "Record for this theme"
+        case .themeListen: "Listen to theme"
+        case .themeCreate: "Create theme"
+        case .themeName: "Theme name"
+        case .themeDescription: "About this theme"
+        case .themeStarts: "Starts"
+        case .themeEnds: "Ends"
+        case .themeHasEnd: "Include end date"
+        case .themeRecordings: "recordings"
+        case .mapSearchPlaceholder: "Search sounds, places or themes"
+        case .mapSearchArea: "Search this area"
+        case .mapClearArea: "Anywhere"
+        case .mapNoResults: "No recordings found. Try another search or a wider area."
+        case .mapResults: "recordings"
+        case .mapListView: "List"
+        case .mapMapView: "Map"
         case .moderationQueue: "Content review"
         case .moderationTab: "Review"
         case .moderationContact: "Contact support: support@panor.tech"
@@ -1138,6 +1204,28 @@ enum SoundscapeLocale: CaseIterable, Sendable {
         case .playerResonates: "有共鳴"
         case .playerNotNow: "不是現在"
         case .playerLessLikeThis: "少推薦這類"
+        case .themeTitle: "主題"
+        case .themeTopic: "長期主題"
+        case .themeEvent: "活動"
+        case .themeChoose: "加入主題"
+        case .themeNone: "不加入主題"
+        case .themeEmpty: "這裡還沒有主題。新主題由管理員策劃，所有人都可以貢獻錄音。"
+        case .themeContribute: "為主題錄音"
+        case .themeListen: "聆聽主題"
+        case .themeCreate: "建立主題"
+        case .themeName: "主題名稱"
+        case .themeDescription: "主題簡介"
+        case .themeStarts: "開始日期"
+        case .themeEnds: "結束日期"
+        case .themeHasEnd: "包含結束日期"
+        case .themeRecordings: "段錄音"
+        case .mapSearchPlaceholder: "搜尋聲音、地點或主題"
+        case .mapSearchArea: "搜尋此區域"
+        case .mapClearArea: "不限區域"
+        case .mapNoResults: "沒有找到錄音。換個關鍵字，或擴大搜尋區域。"
+        case .mapResults: "段錄音"
+        case .mapListView: "列表"
+        case .mapMapView: "地圖"
         case .moderationQueue: "內容審核"
         case .moderationTab: "審核"
         case .moderationContact: "聯絡支援：support@panor.tech"

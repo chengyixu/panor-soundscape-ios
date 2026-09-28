@@ -32,6 +32,8 @@ actor CachedSoundscapeRepository: SoundscapeRepository {
         return try await task.value
     }
 
+    func themes() async throws -> [ListeningTheme] { try await upstream.themes() }
+    func recordings(themeID: Int) async throws -> [Soundscape] { try await upstream.recordings(themeID: themeID) }
     func mine() async throws -> [Soundscape] { try await upstream.mine() }
     func saved() async throws -> [Soundscape] { try await upstream.saved() }
     func create(_ draft: CreateSoundscapeDraft) async throws -> Soundscape { try await upstream.create(draft) }

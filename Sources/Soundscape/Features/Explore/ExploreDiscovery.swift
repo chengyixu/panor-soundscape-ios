@@ -248,6 +248,7 @@ enum ExploreDiscovery {
                 item.displayTitle,
                 item.locationDisplay,
                 item.authorDisplay,
+                item.theme?.title ?? "",
                 item.category,
                 item.categoryDisplay,
                 item.description,

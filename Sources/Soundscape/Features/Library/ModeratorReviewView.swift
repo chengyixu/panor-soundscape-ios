@@ -11,9 +11,11 @@ struct ModeratorReviewView: View {
     @State private var error: AppError?
     @State private var preview: AVAudioPlayer?
     @State private var coverPreview: CoverPreview?
+    @State private var showsCreateTheme = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
+            Button(loc(.themeCreate)) { showsCreateTheme = true }.buttonStyle(SecondaryActionStyle())
             reviewSection(loc(.moderationPending)) {
                 if pending.isEmpty { Text(loc(.moderationEmpty)).foregroundStyle(SoundscapeTheme.secondaryInk) }
                 ForEach(pending) { item in
@@ -57,6 +59,7 @@ struct ModeratorReviewView: View {
         .overlay { if loading { ProgressView() } }
         .task { await load() }
         .onDisappear { preview?.stop() }
+        .sheet(isPresented: $showsCreateTheme) { CreateThemeView(repository: repository) }
         .sheet(item: $coverPreview) { preview in
             Image(uiImage: preview.image).resizable().scaledToFit().padding(20)
                 .accessibilityLabel(loc(.moderationPreviewCover))

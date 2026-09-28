@@ -30,6 +30,9 @@ enum SoundscapeAPIPath: Sendable, Equatable {
     case mySoundscapes
     case savedSoundscapes
     case rankings
+    case themes
+    case themeRecordings(Int)
+    case createTheme
     case aiTitle
     case aiCover
     case stagedCoverName(String)
@@ -56,6 +59,9 @@ enum SoundscapeAPIPath: Sendable, Equatable {
         case .mySoundscapes: "/me/soundscapes"
         case .savedSoundscapes: "/me/saved"
         case .rankings: "/rankings"
+        case .themes: "/themes"
+        case .themeRecordings(let id): "/themes/\(id)/soundscapes"
+        case .createTheme: "/moderation/themes"
         case .aiTitle: "/ai/title"
         case .aiCover: "/ai/cover"
         case .stagedCoverName(let name): "/staged-covers/\(name)"

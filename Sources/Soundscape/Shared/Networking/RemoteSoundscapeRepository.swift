@@ -32,6 +32,16 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
         }
     }
 
+    func themes() async throws -> [ListeningTheme] {
+        try await client.request(baseURL: environment.soundscapeAPIBaseURL, path: SoundscapeAPIPath.themes.value, optionalAuthentication: true)
+    }
+
+    func recordings(themeID: Int) async throws -> [Soundscape] {
+        let rows: [SoundscapeDTO] = try await client.request(baseURL: environment.soundscapeAPIBaseURL,
+            path: SoundscapeAPIPath.themeRecordings(themeID).value, optionalAuthentication: true)
+        return rows.map { $0.domain(environment: environment) }
+    }
+
     func mine() async throws -> [Soundscape] {
         let rows: [SoundscapeDTO] = try await client.request(
             baseURL: environment.soundscapeAPIBaseURL,
@@ -68,6 +78,7 @@ actor RemoteSoundscapeRepository: SoundscapeRepository {
         builder.addField(name: "tag_personal_social", value: String(draft.personalSocial))
         builder.addField(name: "tag_memory_present", value: String(draft.memoryPresent))
         builder.addField(name: "is_public", value: draft.isPublic ? "1" : "0")
+        if let themeID = draft.themeID { builder.addField(name: "theme_id", value: String(themeID)) }
         let dto: SoundscapeDTO = try await client.upload(
             baseURL: environment.soundscapeAPIBaseURL,
             path: SoundscapeAPIPath.soundscapes.value,
