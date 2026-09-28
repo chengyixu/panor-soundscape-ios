@@ -27,9 +27,7 @@ struct ThemesView: View {
                         let matches = themes.filter { query.isEmpty || $0.title.localizedStandardContains(query) || $0.description.localizedStandardContains(query) }
                         if matches.isEmpty { Text(loc(.themeEmpty)).foregroundStyle(SoundscapeTheme.secondaryInk) }
                         ForEach(matches) { theme in
-                            NavigationLink {
-                                ThemeDetailView(theme: theme, repository: repository, player: player, contribute: contribute)
-                            } label: { ThemeRow(theme: theme) }
+                            NavigationLink(value: theme) { ThemeRow(theme: theme) }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("theme-\(theme.id)")
                             Divider()
@@ -39,6 +37,9 @@ struct ThemesView: View {
                 .padding(SoundscapeTheme.screenPadding)
             }
             .soundscapeScreenBackground()
+            .navigationDestination(for: ListeningTheme.self) { theme in
+                ThemeDetailView(theme: theme, isActive: isActive, repository: repository, player: player, contribute: contribute)
+            }
             .task(id: isActive) { if isActive { await load() } }
             .refreshable { await load() }
         }
@@ -76,6 +77,7 @@ struct ThemeRow: View {
 
 private struct ThemeDetailView: View {
     let theme: ListeningTheme
+    let isActive: Bool
     let repository: any SoundscapeRepository
     let player: AudioPlayerController
     let contribute: (ListeningTheme) -> Void
@@ -97,6 +99,7 @@ private struct ThemeDetailView: View {
                 case .loaded(let items):
                     if !items.isEmpty {
                         Button(loc(.themeListen)) { listen() }.buttonStyle(SecondaryActionStyle())
+                            .accessibilityIdentifier("theme-listen")
                     }
                     Text("\(items.count) \(loc(.themeRecordings))").font(.caption).foregroundStyle(SoundscapeTheme.secondaryInk)
                     ForEach(items) { item in
@@ -124,7 +127,7 @@ private struct ThemeDetailView: View {
         .navigationTitle(theme.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .task { await load() }
+        .task(id: isActive) { if isActive { await load() } }
         .refreshable { await load() }
     }
 

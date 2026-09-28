@@ -327,6 +327,13 @@ final class SoundscapeUITests: XCTestCase {
         theme.tap()
         let contribute = app.buttons["theme-contribute"]
         XCTAssertTrue(contribute.waitForExistence(timeout: 8))
+        let listen = app.buttons["theme-listen"]
+        XCTAssertTrue(listen.waitForExistence(timeout: 8))
+        listen.tap()
+        XCTAssertTrue(app.buttons["playback-collection"].waitForExistence(timeout: 8))
+        XCTAssertEqual(app.buttons["playback-collection"].value as? String, "City cycling")
+        app.buttons["turntable-back"].tap()
+        XCTAssertTrue(contribute.waitForExistence(timeout: 8), "Theme navigation must survive playback and list refresh")
         contribute.tap()
         let selected = app.buttons["share-theme"]
         XCTAssertTrue(selected.waitForExistence(timeout: 8))
